@@ -8,8 +8,9 @@ const NFT_PASTA: &str = "You think it’s funny to take screenshots of people’
 const JENKEM_PASTA: &str = "every free man deserves the right to choose his own destiny and toil, his own soil and means of dealing with said soil. exactly why I DIYed my own septic tank a few years ago - to stop the Big Shit™☭ fucking commies stealing my rightfully owned, god-given jenkem. in the name of greatest people to have ever trod this earth, i urge you all to toss the gauntlet before the feet of tyranny and dynamite your sewerage line and install your own septic tank system in peaceful protest against the Big Shit™☭ commies i'm glad i hooked my janktank up to my HVAC before winter bc i've been burning the fumes to heat my house, every surface is now coated with a slightly-sticky film which i believe has strong insulative properties, and all my belongings smell like shit and piss (but in a good way). been running my car on jenk and saving the planet from bad emissions and my wallet from gas prices, started a refinery business and been selling my refined jenkem on the foreign market for Big Baller Bucks. also tried fermenting my jenk further to brew craft beers but people said it tasted a bit too shitty, dumb hipster fucks don't know what's good. i guess you can't please everyone... Also started a cryptocurrency and duped a fuckload of dumb investors with my innovative ideas, every time someone flushes their toilet it gets written to the blockchain. this toilet-flush data will be the lifeblood of jenkem futures and derivatives. i've just about finished my pump-and-dump scheme and i'm about to dump all my shitcoins and make a trillion dollars - but not before i take another dump to top up my jenkem supply. this has been a tough 12 months alright, but when life gives you shit, make jenkem.";
 const WDHM_PASTA: &str = "Surge";
 
-const SHUT_VID: &str = "https://cdn.discordapp.com/attachments/987427721732825148/987427794176847963/trim.BB692377-BDB1-4676-B335-C16A02987151.mov";
-const BITWIG_VID: &str = "https://cdn.discordapp.com/attachments/987427721732825148/987427756038053888/trim.66E02CFF-5FD2-4175-AA21-4372AA841015.mov";
+const FL_IMG: &str = "https://media.discordapp.net/attachments/1230211453311778931/1230211520856592424/IMG_6716.jpg?ex=66327ec2&is=662009c2&hm=1b96ee2d73ba638b9b01972b999e568a77c47707a4b247e1d608eb55b18aa107&=&format=webp&width=758&height=505";
+const BITWIG_VID: &str = "https://cdn.discordapp.com/attachments/784498744506580992/1210284372310237244/trim.66E02CFF-5FD2-4175-AA21-4372AA841015.mov";
+const SENNHEISER_VID: &str = "https://cdn.discordapp.com/attachments/784498744506580992/1224166761692397660/Snapsave.app_434596257_1501537313768606_3029272559969168436_n.mp4";
 
 pub async fn copypastas(ctx: &Context, msg: &Message) {
     if msg.channel_id.0 == get_env!("ABB_SHITPOST_CHANNEL", u64) {
@@ -34,6 +35,7 @@ pub async fn copypastas(ctx: &Context, msg: &Message) {
     //Image/Video Responses
     fl_is_fine(ctx, msg).await;
     bitwig(ctx, msg).await;
+    sennheiser(ctx, msg).await;
 }
 
 pub async fn pasta(ctx: &Context, msg: &Message, trigger: &str, pasta: &str) {
@@ -62,16 +64,20 @@ pub async fn response(ctx: &Context, msg: &Message, trigger: &str, response: &st
 }
 
 async fn fl_is_fine(ctx: &Context, msg: &Message) {
-    response(ctx, msg, "fl is fine", SHUT_VID).await;
-    response(ctx, msg, "fl studio is fine", SHUT_VID).await;
-    response(ctx, msg, "fl is good", SHUT_VID).await;
-    response(ctx, msg, "fl studio is good", SHUT_VID).await;
-    response(ctx, msg, "there's nothing wrong with fl studio", SHUT_VID).await;
-    response(ctx, msg, "there is nothing wrong with fl studio", SHUT_VID).await;
-    response(ctx, msg, "there's nothing wrong with fl", SHUT_VID).await;
-    response(ctx, msg, "there is nothing wrong with fl", SHUT_VID).await;
+    response(ctx, msg, "fl is fine", FL_IMG).await;
+    response(ctx, msg, "fl studio is fine", FL_IMG).await;
+    response(ctx, msg, "fl is good", FL_IMG).await;
+    response(ctx, msg, "fl studio is good", FL_IMG).await;
+    response(ctx, msg, "there's nothing wrong with fl studio", FL_IMG).await;
+    response(ctx, msg, "there is nothing wrong with fl studio", FL_IMG).await;
+    response(ctx, msg, "there's nothing wrong with fl", FL_IMG).await;
+    response(ctx, msg, "there is nothing wrong with fl", FL_IMG).await;
 }
 
 async fn bitwig(ctx: &Context, msg: &Message) {
     response(ctx, msg, "i use bitwig", BITWIG_VID).await;
+}
+
+async fn sennheiser(ctx: &Context, msg: &Message) {
+    response(ctx, msg, "sennheiser", SENNHEISER_VID).await;
 }
