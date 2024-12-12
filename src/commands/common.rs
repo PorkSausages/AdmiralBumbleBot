@@ -11,16 +11,10 @@ use serenity::{
 use rand::Rng;
 
 pub async fn random_user(ctx: &Context, guild_id: &GuildId) -> Member {
-    let member_count = guild_id
-        .to_guild_cached(&ctx.cache)
-        .await
-        .unwrap()
-        .member_count;
-
     let members: Vec<Member> = guild_id
-        .members(&ctx.http, Some(member_count), None)
+        .members(&ctx.http, Some(1000), None)
         .await
-        .unwrap(); //For some reason not supplying a limit makes it return a single member every time
+        .unwrap();
 
     let mut rng = rand::thread_rng();
     let random_index = rng.gen_range(0, members.len());
