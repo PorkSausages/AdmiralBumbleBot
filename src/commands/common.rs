@@ -10,9 +10,11 @@ use serenity::{
 
 use rand::Rng;
 
+const MEMBER_LIMIT: u64 = 1000;
+
 pub async fn random_user(ctx: &Context, guild_id: &GuildId) -> Member {
     let members: Vec<Member> = guild_id
-        .members(&ctx.http, Some(1000), None)
+        .members(&ctx.http, Some(MEMBER_LIMIT), None)
         .await
         .unwrap();
 
