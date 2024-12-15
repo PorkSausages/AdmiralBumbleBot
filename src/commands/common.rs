@@ -7,6 +7,22 @@ use serenity::{
     prelude::Context,
 };
 
+use rand::Rng;
+
+const MEMBER_LIMIT: u64 = 1000;
+
+pub async fn random_user(ctx: &Context, guild_id: &GuildId) -> Member {
+    let members: Vec<Member> = guild_id
+        .members(&ctx.http, Some(MEMBER_LIMIT), None)
+        .await
+        .unwrap();
+
+    let mut rng = rand::thread_rng();
+    let random_index = rng.gen_range(0, members.len());
+
+    members[random_index].clone()
+}
+
 pub async fn confirm_admin(ctx: &Context, user: &User, guild: GuildId) -> bool {
     match user
         .has_role(&ctx.http, guild, RoleId(get_env!("ABB_ADMIN_ROLE", u64)))
