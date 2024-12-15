@@ -1,26 +1,11 @@
 use serenity::{
     model::{
         channel::Message,
-        guild::Member,
         id::{GuildId, RoleId},
         prelude::User,
     },
     prelude::Context,
 };
-
-use rand::Rng;
-
-pub async fn random_user(ctx: &Context, guild_id: &GuildId) -> Member {
-    let members: Vec<Member> = guild_id
-        .members(&ctx.http, Some(1000), None)
-        .await
-        .unwrap();
-
-    let mut rng = rand::thread_rng();
-    let random_index = rng.gen_range(0, members.len());
-
-    members[random_index].clone()
-}
 
 pub async fn confirm_admin(ctx: &Context, user: &User, guild: GuildId) -> bool {
     match user
