@@ -12,12 +12,10 @@ pub async fn announcement(ctx: &Context, msg: &Message) {
     let guild_id = msg.guild_id.expect("Error getting guild ID");
     let author = &msg.author;
 
-    let (title, body) = match parse_announcement_message(msg.content.as_str()) {
+    let (id, title, body) = match parse_announcement_message(msg.content.as_str()) {
         Some(some) => some,
         None => return,
     };
-
-    let random_user = common::random_user(ctx, &guild_id).await;
 
     if common::confirm_admin(ctx, author, guild_id).await
         || d20::roll_dice("2d20").unwrap().total >= 39
@@ -25,7 +23,7 @@ pub async fn announcement(ctx: &Context, msg: &Message) {
         if let Err(e) = ChannelId(get_env!("ABB_ANNOUNCEMENT_CHANNEL", u64))
             .send_message(&ctx.http, |m| {
                 m.tts(true);
-                m.content(format!("Hey, <@!{}>! Yes, you!", random_user.user.id));
+                m.content(format!("Hey, <@!{}>! Yes, you!", id));
                 m.embed(|e| {
                     e.title(title);
                     e.description(body);
@@ -41,25 +39,25 @@ pub async fn announcement(ctx: &Context, msg: &Message) {
     }
 }
 
-fn parse_announcement_message(message: &str) -> Option<(String, String)> {
-    let re = Regex::new(r"(\*\*(?P<title>.*)\*\* (?P<body>.*))").unwrap();
+fn parse_announcement_message(message: &str) -> Option<(String, String, String)> {
+    let re = Regex::new(r"(?P<user_id>\d+) \*\*(?P<title>.*?)\*\* (?P<body>.*)").unwrap();
 
     if !re.is_match(message) {
         return None;
     }
 
     let caps = re.captures(message).unwrap();
+    let (user_id, title, body) = (
+        caps.name("user_id")
+            .expect("Error parsing user ID")
+            .as_str(),
+        caps.name("title")
+            .expect("Error parsing announcement title")
+            .as_str(),
+        caps.name("body")
+            .expect("Error parsing announcement body")
+            .as_str(),
+    );
 
-    let (title, body) = {
-        (
-            caps.name("title")
-                .expect("Error parsing announcement title")
-                .as_str(),
-            caps.name("body")
-                .expect("Error parsing announcement body")
-                .as_str(),
-        )
-    };
-
-    Some((String::from(title), String::from(body)))
+    Some((String::from(user_id), String::from(title), String::from(body)))
 }
