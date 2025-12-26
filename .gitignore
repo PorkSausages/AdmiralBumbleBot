@@ -3,5 +3,6 @@
 /.idea
 /.vscode
 .env
+.env copy
 dumb_channels.ron
 .DS_Store

@@ -31,8 +31,8 @@ pub async fn help(ctx: &Context, msg: &Message) {
                     true,
                 ),
                 (
-                    "$announcement `**{title}**` `{body}`",
-                    "Makes an announcement to the server.",
+                    "$announcement `{userID}` `**{title}**` `{body}`",
+                    "Target a special user with a personalised message.",
                     true,
                 ),
                 (

@@ -3,7 +3,7 @@
 use {
     dotenv::dotenv,
     handler::Handler,
-    serenity::{prelude::RwLock, Client},
+    serenity::{Client, prelude::{GatewayIntents, RwLock}},
     std::{collections::HashMap, sync::Arc},
 };
 
@@ -25,7 +25,11 @@ const CLEVERBOT_DELAY_SECONDS: u64 = 300;
 async fn main() {
     dotenv().ok();
 
-    let mut client = Client::builder(get_env!("ABB_TOKEN"))
+    let mut intents = GatewayIntents::non_privileged();
+    intents.insert(GatewayIntents::MESSAGE_CONTENT); 
+    intents.insert(GatewayIntents::GUILD_MEMBERS);
+
+    let mut client = Client::builder(get_env!("ABB_TOKEN"), intents)
         .event_handler(Handler {
             storage: sled::open(STORAGE_PATH).expect("Error opening storage database"),
             ignore_list: Arc::new(RwLock::new(HashMap::new())),
@@ -36,8 +40,7 @@ async fn main() {
     client
         .cache_and_http
         .cache
-        .set_max_messages(CACHE_SIZE)
-        .await;
+        .set_max_messages(CACHE_SIZE);
 
     if let Err(e) = client.start().await {
         eprintln!("Error starting client: {}", e);
