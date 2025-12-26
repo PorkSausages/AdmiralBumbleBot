@@ -19,7 +19,7 @@ mod storage;
 const STORAGE_PATH: &str = "storage";
 const CACHE_SIZE: usize = 500;
 const CLEVERBOT_LIMIT: u8 = 10;
-const CLEVERBOT_DELAY_SECONDS: u64 = 300;
+const CLEVERBOT_DELAY_SECONDS: u64 = 299;
 
 #[tokio::main]
 async fn main() {
