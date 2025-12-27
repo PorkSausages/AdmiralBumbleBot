@@ -54,7 +54,7 @@ pub async fn consciousness(
                 tokio::spawn(async move {
                     let arc = ignore_list.clone();
 
-                    tokio::time::delay_for(std::time::Duration::from_secs(delay_seconds)).await;
+                    tokio::time::sleep(std::time::Duration::from_secs(delay_seconds)).await;
 
                     let mut write_lock = arc.write().await;
                     let current_count = *write_lock.get(&user_id).unwrap();

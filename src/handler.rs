@@ -5,10 +5,9 @@ use {
         model::{
             channel::Message,
             event::MessageUpdateEvent,
-            guild::Member,
+            guild::{Member},
             id::{ChannelId, GuildId, MessageId},
-            prelude::User,
-            prelude::{Activity, Ready},
+            prelude::{Activity, Ready, User},
         },
         prelude::*,
     },
@@ -25,7 +24,6 @@ impl EventHandler for Handler {
     async fn guild_member_addition(
         &self,
         ctx: Context,
-        _guild_id: GuildId,
         mut new_member: Member,
     ) {
         let join_roles: Vec<u64> = vec![
@@ -82,8 +80,8 @@ impl EventHandler for Handler {
         );
     }
 
-    async fn message_delete(&self, ctx: Context, channel_id: ChannelId, message_id: MessageId) {
-        let deleted_message = ctx.cache.message(channel_id, message_id).await;
+    async fn message_delete(&self, ctx: Context, channel_id: ChannelId, message_id: MessageId, _guild_id: Option<GuildId>) {
+        let deleted_message = ctx.cache.message(channel_id, message_id);
         if let Some(message) = deleted_message {
             let stripped_message = message.content.replace("`", "");
 
