@@ -59,5 +59,9 @@ fn parse_announcement_message(message: &str) -> Option<(String, String, String)>
             .as_str(),
     );
 
-    Some((String::from(user_id), String::from(title), String::from(body)))
+    Some((
+        String::from(user_id),
+        String::from(title),
+        String::from(body),
+    ))
 }

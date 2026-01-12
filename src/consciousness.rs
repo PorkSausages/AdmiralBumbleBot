@@ -85,8 +85,6 @@ pub async fn consciousness(
                     .say(&ctx.http, &response_message)
                     .await
                     .expect("Error sending message");
-
-                return;
             } else {
                 let response = format!("<@{}> HOLY SHIT GO OUTSIDE", user_id);
 

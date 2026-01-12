@@ -39,7 +39,7 @@ pub async fn copypastas(ctx: &Context, msg: &Message) {
 }
 
 pub async fn pasta(ctx: &Context, msg: &Message, trigger: &str, pasta: &str) {
-    if msg.content.to_ascii_lowercase() == trigger.to_ascii_lowercase()
+    if msg.content.eq_ignore_ascii_case(trigger)
         && msg.author.id.0 != get_env!("ABB_BOT_USER_ID", u64)
     {
         msg.channel_id
@@ -50,7 +50,7 @@ pub async fn pasta(ctx: &Context, msg: &Message, trigger: &str, pasta: &str) {
 }
 
 pub async fn response(ctx: &Context, msg: &Message, trigger: &str, response: &str) {
-    if msg.content.to_ascii_lowercase() == trigger.to_ascii_lowercase()
+    if msg.content.eq_ignore_ascii_case(trigger)
         && msg.author.id.0 != get_env!("ABB_BOT_USER_ID", u64)
     {
         msg.channel_id

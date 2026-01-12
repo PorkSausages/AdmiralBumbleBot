@@ -18,10 +18,9 @@ dotenv = "0.15.0"
 ron = "0.5.1"
 num-traits = "0.2"
 num-derive = "0.4"
-sled = "0.34.0"
 serde = {version = "1.0.110", features = ["derive"]}
-bincode = "1.2.1"
-rand = "0.7.3"
 reqwest = { version = "0.11", features = ["json", "rustls-tls"] }
 url = "2.2.0"
 similar = {version = "2.7.0", features = ["text", "unicode", "inline"]}
+redb = "3.1.0"
+bincode = "=1.3.3"

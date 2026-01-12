@@ -1,3 +1,4 @@
+use crate::storage_models::DatabaseLayer;
 use serenity::model::id::RoleId;
 
 use {
@@ -28,7 +29,7 @@ mod slap;
 pub async fn execute(
     ctx: &Context,
     msg: &Message,
-    db: &sled::Db,
+    db: &DatabaseLayer,
     ignore_list: Arc<RwLock<HashMap<u64, u8>>>,
 ) {
     sonic(ctx, msg).await;

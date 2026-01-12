@@ -2,7 +2,9 @@
 /storage
 /.idea
 /.vscode
-.env
-.env copy
 dumb_channels.ron
 .DS_Store
+
+.env
+.env copy
+data.redb
