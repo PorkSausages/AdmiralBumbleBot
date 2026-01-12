@@ -1,11 +1,10 @@
 use {
     super::common,
-    crate::logging,
-    crate::storage,
+    crate::{logging, storage, storage_models::DatabaseLayer},
     serenity::{model::channel::Message, prelude::Context},
 };
 
-pub async fn give_admin(ctx: &Context, msg: &Message, db: &sled::Db) {
+pub async fn give_admin(ctx: &Context, msg: &Message, db: &DatabaseLayer) {
     if !common::in_bot_channel(msg) {
         return;
     }
@@ -14,7 +13,7 @@ pub async fn give_admin(ctx: &Context, msg: &Message, db: &sled::Db) {
     let author = &msg.author;
     let has_jenkem = storage::locate_jenkem(db) == get_env!("ABB_BOT_USER_ID", u64);
     let dice_roll = d20::roll_dice("2d20").unwrap().total;
-    let grownups = vec![
+    let grownups = [
         get_env!("ABB_PORKSAUSAGES_ID", u64),
         get_env!("ABB_WRL_ID", u64),
         get_env!("ABB_M4X_ID", u64),

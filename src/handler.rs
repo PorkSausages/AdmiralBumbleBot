@@ -1,5 +1,6 @@
 use {
-    crate::{commands, logging, storage}, serenity::{
+    crate::{commands, logging, storage, storage_models::DatabaseLayer},
+    serenity::{
         async_trait,
         model::{
             channel::Message,
@@ -9,21 +10,19 @@ use {
             prelude::{Activity, Ready, User},
         },
         prelude::*,
-    }, similar::{Algorithm, ChangeTag, TextDiff}, std::{collections::HashMap, sync::Arc, time}
+    },
+    similar::{Algorithm, ChangeTag, TextDiff},
+    std::{collections::HashMap, sync::Arc, time},
 };
 
 pub struct Handler {
-    pub storage: sled::Db,
+    pub storage: Arc<DatabaseLayer>,
     pub ignore_list: Arc<RwLock<HashMap<u64, u8>>>,
 }
 
 #[async_trait]
 impl EventHandler for Handler {
-    async fn guild_member_addition(
-        &self,
-        ctx: Context,
-        mut new_member: Member,
-    ) {
+    async fn guild_member_addition(&self, ctx: Context, mut new_member: Member) {
         let join_roles: Vec<u64> = vec![
             get_env!("ABB_JOIN_ROLE_1", u64),
             get_env!("ABB_JOIN_ROLE_2", u64),
@@ -78,7 +77,13 @@ impl EventHandler for Handler {
         );
     }
 
-    async fn message_delete(&self, ctx: Context, channel_id: ChannelId, message_id: MessageId, _guild_id: Option<GuildId>) {
+    async fn message_delete(
+        &self,
+        ctx: Context,
+        channel_id: ChannelId,
+        message_id: MessageId,
+        _guild_id: Option<GuildId>,
+    ) {
         let deleted_message = ctx.cache.message(channel_id, message_id);
         if let Some(message) = deleted_message {
             let stripped_message = message.content.replace("`", "");
@@ -109,35 +114,41 @@ impl EventHandler for Handler {
                 Some(ref n) => n.content.clone(),
                 None => return,
             };
-    
-            if msg.content == new_content { return; }
-    
+
+            if msg.content == new_content {
+                return;
+            }
+
             let old_stripped = &msg.content.replace("`", "");
             let new_stripped = &new_content.replace("`", "");
             let mut deletion_buffer = String::new();
             let mut insertion_buffer = String::new();
             let mut res = String::new();
-    
+
             let diff = TextDiff::configure()
                 .algorithm(Algorithm::Patience)
                 .diff_words(old_stripped, new_stripped);
-    
+
             //the diffing algorithm will splice spaces in as equal, we have to handle them like so
             for change in diff.iter_all_changes() {
                 match change.tag() {
-                    ChangeTag::Delete => { //handle deleted words normally
+                    ChangeTag::Delete => {
+                        //handle deleted words normally
                         deletion_buffer.push_str(change.as_str().unwrap());
                     }
-                    ChangeTag::Insert => { //handle new words normally
+                    ChangeTag::Insert => {
+                        //handle new words normally
                         insertion_buffer.push_str(change.as_str().unwrap());
                     }
                     ChangeTag::Equal => {
                         let text = change.as_str().unwrap();
-        
-                        if text.trim().is_empty() { //push spaces to both buffers so they're printed right
+
+                        if text.trim().is_empty() {
+                            //push spaces to both buffers so they're printed right
                             deletion_buffer.push_str(text);
                             insertion_buffer.push_str(text);
-                        } else { //unchanged word, flush both buffers before the word
+                        } else {
+                            //unchanged word, flush both buffers before the word
                             if !deletion_buffer.trim().is_empty() {
                                 res.push_str(&format!("~~{}~~ ", &deletion_buffer.trim()));
                                 deletion_buffer.clear();
@@ -151,18 +162,18 @@ impl EventHandler for Handler {
                     }
                 }
             }
-    
+
             //handle the end of the sentence
             if !deletion_buffer.trim().is_empty() && !insertion_buffer.trim().is_empty() {
                 //special case to print the last space if something is swapped at the end of the sentence
                 res.push_str(&format!("~~{}~~ ", &deletion_buffer.trim()));
-            } else if !deletion_buffer.trim().is_empty() { 
+            } else if !deletion_buffer.trim().is_empty() {
                 res.push_str(&format!("~~{}~~", &deletion_buffer.trim()));
             }
             if !insertion_buffer.trim().is_empty() {
                 res.push_str(&format!("**{}**", &insertion_buffer.trim()));
             }
-    
+
             logging::log(
                 &ctx,
                 format!(
@@ -179,7 +190,7 @@ impl EventHandler for Handler {
 
     async fn ready(&self, ctx: Context, _data_about_bot: Ready) {
         ctx.set_activity(Activity::playing(
-            "See my insides at https://git.io/JfW94 😘",
+            "Lonely hedgehogs in your area: https://git.io/JfW94 🦔",
         ))
         .await;
     }

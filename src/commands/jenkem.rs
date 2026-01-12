@@ -1,17 +1,25 @@
 use {
-    crate::commands::bee_sting,
-    crate::storage,
+    crate::{commands::bee_sting, storage, storage_models::DatabaseLayer},
     serenity::{
         model::{channel::Message, id::UserId},
         prelude::Context,
     },
 };
 
-pub async fn pass_jenkem(ctx: &Context, msg: &Message, target: &str, db: &sled::Db) {
+pub async fn pass_jenkem(ctx: &Context, msg: &Message, target: &str, db: &DatabaseLayer) {
     let author = &msg.author;
-    let recipient = UserId(target.parse().expect("Error parsing target"));
+    let recipient = match target.parse() {
+        Ok(id) => UserId(id),
+        Err(_) => {
+            msg.channel_id
+                .say(&ctx.http, "Please specify a victim.")
+                .await
+                .expect("Error sending message");
+            return;
+        }
+    };
 
-    let allergic = vec![get_env!("ABB_CONNER_ID", u64), get_env!("ABB_WRL_ID", u64)];
+    let allergic = [get_env!("ABB_CONNER_ID", u64), get_env!("ABB_WRL_ID", u64)];
     let is_allergic = allergic.contains(&recipient.0);
 
     if jenkem_possession_check(ctx, msg, author.id.0, db).await && author.id.0 != recipient.0 {
@@ -42,7 +50,7 @@ pub async fn pass_jenkem(ctx: &Context, msg: &Message, target: &str, db: &sled::
             .say(
                 &ctx.http,
                 format!(
-                    "{} passed the jenkem to {}! The jenkem has been huffed {} times.",
+                    "{} passed the jenkem to {}! The jenkem has been huffed {} time(s).",
                     author.name,
                     recipient
                         .to_user(&ctx.http)
@@ -57,7 +65,7 @@ pub async fn pass_jenkem(ctx: &Context, msg: &Message, target: &str, db: &sled::
     }
 }
 
-pub async fn brew_jenkem(ctx: &Context, msg: &Message, db: &sled::Db) {
+pub async fn brew_jenkem(ctx: &Context, msg: &Message, db: &DatabaseLayer) {
     let author_name = &msg.author.name;
     let author_id = msg.author.id.0;
     storage::init_jenkem(author_id, db);
@@ -71,7 +79,7 @@ pub async fn brew_jenkem(ctx: &Context, msg: &Message, db: &sled::Db) {
         .expect("Error sending message");
 }
 
-pub async fn locate_jenkem(ctx: &Context, msg: &Message, db: &sled::Db) {
+pub async fn locate_jenkem(ctx: &Context, msg: &Message, db: &DatabaseLayer) {
     let jenkem_holder = storage::locate_jenkem(db);
 
     if jenkem_holder == 0 {
@@ -95,7 +103,7 @@ pub async fn locate_jenkem(ctx: &Context, msg: &Message, db: &sled::Db) {
     }
 }
 
-pub async fn reject_jenkem(ctx: &Context, msg: &Message, db: &sled::Db) {
+pub async fn reject_jenkem(ctx: &Context, msg: &Message, db: &DatabaseLayer) {
     let message: &str;
 
     if jenkem_possession_check(ctx, msg, msg.author.id.0, db).await {
@@ -111,7 +119,7 @@ pub async fn reject_jenkem(ctx: &Context, msg: &Message, db: &sled::Db) {
     }
 }
 
-pub async fn jenkem_streak(ctx: &Context, msg: &Message, db: &sled::Db) {
+pub async fn jenkem_streak(ctx: &Context, msg: &Message, db: &DatabaseLayer) {
     let streak = storage::get_jenkem_streak(db);
 
     msg.channel_id
@@ -127,7 +135,7 @@ async fn jenkem_possession_check(
     ctx: &Context,
     msg: &Message,
     author_id: u64,
-    db: &sled::Db,
+    db: &DatabaseLayer,
 ) -> bool {
     let current_holder = storage::locate_jenkem(db);
 

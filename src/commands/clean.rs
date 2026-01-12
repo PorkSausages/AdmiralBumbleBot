@@ -16,9 +16,7 @@ pub async fn clean(ctx: &Context, msg: &Message, args: &str) {
                 let channel_id = msg.channel_id;
 
                 let mut messages = channel_id
-                    .messages(&ctx.http, |retriever| {
-                        retriever.before(&msg.id).limit(limit)
-                    })
+                    .messages(&ctx.http, |retriever| retriever.before(msg.id).limit(limit))
                     .await
                     .expect("Error getting messages to delete");
 
