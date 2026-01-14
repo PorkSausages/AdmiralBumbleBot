@@ -1,13 +1,18 @@
 use {
-    crate::{commands, logging, storage, storage_models::DatabaseLayer},
+    crate::{
+        commands, logging, storage,
+        storage_models::DatabaseLayer,
+        util::{get_id_from_env, roll_dice},
+    },
     serenity::{
+        all::ActivityData,
         async_trait,
         model::{
             channel::Message,
             event::MessageUpdateEvent,
             guild::Member,
             id::{ChannelId, GuildId, MessageId},
-            prelude::{Activity, Ready, User},
+            prelude::{Ready, User},
         },
         prelude::*,
     },
@@ -22,23 +27,23 @@ pub struct Handler {
 
 #[async_trait]
 impl EventHandler for Handler {
-    async fn guild_member_addition(&self, ctx: Context, mut new_member: Member) {
-        let join_roles: Vec<u64> = vec![
-            get_env!("ABB_JOIN_ROLE_1", u64),
-            get_env!("ABB_JOIN_ROLE_2", u64),
+    async fn guild_member_addition(&self, ctx: Context, new_member: Member) {
+        let join_roles: [u64; 2] = [
+            get_id_from_env("ABB_JOIN_ROLE_1"),
+            get_id_from_env("ABB_JOIN_ROLE_2"),
         ];
 
         new_member
             .add_role(
                 &ctx.http,
-                join_roles[d20::roll_dice("1d2").unwrap().total as usize - 1],
+                join_roles[roll_dice("1d2").unwrap() as usize - 1],
             )
             .await
             .expect("Error roling new user");
 
         logging::log(
             &ctx,
-            format!("📥 User joined: <@!{}>", new_member.user.id.as_u64()).as_str(),
+            format!("📥 User joined: <@!{}>", new_member.user.id.get()).as_str(),
         )
         .await;
     }
@@ -52,7 +57,7 @@ impl EventHandler for Handler {
     ) {
         logging::log(
             &ctx,
-            format!("📤 User left: <@!{}>`", user.id.as_u64()).as_str(),
+            format!("📤 User left: <@!{}>`", user.id.get()).as_str(),
         )
         .await;
     }
@@ -61,17 +66,18 @@ impl EventHandler for Handler {
         let arc = self.ignore_list.clone();
         commands::execute(&ctx, &msg, &self.storage, arc).await;
 
-        let user_id = *msg.author.id.as_u64();
-        let channel_id = *msg.channel_id.as_u64();
+        let user_id = msg.author.id;
+        let channel_id = msg.channel_id;
+        let word_count = msg.content.split(' ').count() as u16;
         let timestamp = time::SystemTime::now()
             .duration_since(time::UNIX_EPOCH)
             .unwrap()
             .as_secs();
 
         storage::log_activity(
-            user_id,
-            channel_id,
-            msg.content.split(' ').count() as u16,
+            user_id.get(),
+            channel_id.get(),
+            word_count,
             timestamp,
             &self.storage,
         );
@@ -84,22 +90,24 @@ impl EventHandler for Handler {
         message_id: MessageId,
         _guild_id: Option<GuildId>,
     ) {
-        let deleted_message = ctx.cache.message(channel_id, message_id);
-        if let Some(message) = deleted_message {
-            let stripped_message = message.content.replace("`", "");
-
-            logging::log(
-                &ctx,
-                format!(
-                    "🗑 Message deleted by <@!{}> in <#{}>:\n`{}`",
-                    message.author.id.as_u64(),
-                    channel_id,
-                    stripped_message
-                )
-                .as_str(),
+        let (author_id, content) = {
+            match ctx.cache.message(channel_id, message_id) {
+                Some(message) => (message.author.id, message.content.clone()),
+                None => return,
+            }
+        };
+        let stripped_message = content.replace("`", "");
+        logging::log(
+            &ctx,
+            format!(
+                "🗑 Message deleted by <@!{}> in <#{}>:\n`{}`",
+                author_id.get(),
+                channel_id,
+                stripped_message
             )
-            .await;
-        }
+            .as_str(),
+        )
+        .await;
     }
 
     async fn message_update(
@@ -178,7 +186,7 @@ impl EventHandler for Handler {
                 &ctx,
                 format!(
                     "✏ Message edited by <@!{}> in <#{}>:\n ┣ {}",
-                    msg.author.id.as_u64(),
+                    msg.author.id.get(),
                     msg.channel_id,
                     res,
                 )
@@ -189,9 +197,8 @@ impl EventHandler for Handler {
     }
 
     async fn ready(&self, ctx: Context, _data_about_bot: Ready) {
-        ctx.set_activity(Activity::playing(
-            "Lonely hedgehogs in your area: https://git.io/JfW94 🦔",
-        ))
-        .await;
+        ctx.set_activity(Some(ActivityData::playing(
+            "Sonic: https://git.io/JfW94 🦔",
+        )));
     }
 }

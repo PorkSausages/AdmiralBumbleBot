@@ -1,12 +1,14 @@
 use serenity::{model::channel::Message, prelude::Context};
 
+use crate::util::get_id_from_env;
+
 pub async fn mute(ctx: &Context, msg: &Message) {
     let guild_id = msg.guild_id.expect("Error getting guild ID");
     let author = &msg.author;
 
-    let mut member = ctx
+    let member = ctx
         .http
-        .get_member(*guild_id.as_u64(), *author.id.as_u64())
+        .get_member(guild_id, author.id)
         .await
         .expect("Error getting user");
 
@@ -16,7 +18,7 @@ pub async fn mute(ctx: &Context, msg: &Message) {
         .expect("Error sending message");
 
     if let Err(e) = member
-        .add_role(&ctx.http, get_env!("ABB_MUTE_ROLE", u64))
+        .add_role(&ctx.http, get_id_from_env("ABB_MUTE_ROLE"))
         .await
     {
         eprintln!("Error muting user: {}", e);

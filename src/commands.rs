@@ -1,4 +1,7 @@
-use crate::storage_models::DatabaseLayer;
+use crate::{
+    storage_models::DatabaseLayer,
+    util::{get_id_from_env, roll_dice},
+};
 use serenity::model::id::RoleId;
 
 use {
@@ -46,7 +49,7 @@ pub async fn execute(
         .has_role(
             &ctx.http,
             guild_id,
-            RoleId(get_env!("ABB_BOOSTER_ROLE", u64)),
+            RoleId::new(get_id_from_env("ABB_BOOSTER_ROLE")),
         )
         .await
     {
@@ -62,8 +65,8 @@ pub async fn execute(
         None => return,
     };
 
-    if d20::roll_dice("1d20").unwrap().total == 20
-        && *msg.channel_id.as_u64() != get_env!("ABB_BOT_TEST_CHANNEL", u64)
+    if roll_dice("1d20").unwrap() == 20
+        && msg.channel_id.get() != get_id_from_env("ABB_BOT_TEST_CHANNEL")
         && !is_booster
     {
         bee_sting::bee_sting(ctx, msg).await;
@@ -136,12 +139,12 @@ async fn sonic(ctx: &Context, msg: &Message) {
         msg.react(
             &ctx.http,
             ReactionType::Custom {
-                id: EmojiId(724619044606574645),
+                id: EmojiId::new(get_id_from_env("ABB_SONIC_EMOTE")),
                 animated: false,
                 name: Some(String::from("sonic-1")),
             },
         )
         .await
-        .expect("I literally can't even");
+        .expect("⚠ Sonic not added 🦔☹ ⚠");
     }
 }

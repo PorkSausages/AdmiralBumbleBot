@@ -1,13 +1,15 @@
-use serenity::{model::channel::Message, prelude::Context, utils::Color};
+use serenity::{
+    all::{Colour, CreateEmbed, CreateMessage},
+    model::channel::Message,
+    prelude::Context,
+};
 
 pub async fn help(ctx: &Context, msg: &Message) {
-    if let Err(e) = msg
-        .channel_id
-        .send_message(&ctx.http, |m| {
-            m.embed(|e| {
-                e.title("Help - Command List");
-                e.color(Color::from_rgb(255, 255, 0));
-                e.fields(vec![
+    let message = CreateMessage::new().add_embed(
+        CreateEmbed::new()
+            .title("Help - Command List")
+            .colour(Colour::from_rgb(255, 255, 0))
+            .fields([
                 ("$help", "Show this again.", true),
                 ("$buzz", "BUZZ!", true),
                 (
@@ -60,13 +62,10 @@ pub async fn help(ctx: &Context, msg: &Message) {
                     "Roll one or more dice with as many sides as you choose, e.g `2d20`",
                     true,
                 ),
-            ]);
-                e
-            });
-            m
-        })
-        .await
-    {
+            ]),
+    );
+
+    if let Err(e) = msg.channel_id.send_message(&ctx.http, message).await {
         eprintln!("Error displaying help: {}", e);
     }
 }

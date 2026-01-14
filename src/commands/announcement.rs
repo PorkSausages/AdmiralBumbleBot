@@ -1,10 +1,11 @@
 use {
     super::common,
+    crate::util::{get_id_from_env, roll_dice},
     regex::Regex,
     serenity::{
+        all::{Colour, CreateEmbed, CreateMessage},
         model::{channel::Message, id::ChannelId},
         prelude::Context,
-        utils::Color,
     },
 };
 
@@ -17,21 +18,19 @@ pub async fn announcement(ctx: &Context, msg: &Message) {
         None => return,
     };
 
-    if common::confirm_admin(ctx, author, guild_id).await
-        || d20::roll_dice("2d20").unwrap().total >= 39
-    {
-        if let Err(e) = ChannelId(get_env!("ABB_ANNOUNCEMENT_CHANNEL", u64))
-            .send_message(&ctx.http, |m| {
-                m.tts(true);
-                m.content(format!("Hey, <@!{}>! Yes, you!", id));
-                m.embed(|e| {
-                    e.title(title);
-                    e.description(body);
-                    e.color(Color::from_rgb(255, 255, 0));
-                    e
-                });
-                m
-            })
+    if common::confirm_admin(ctx, author, guild_id).await || roll_dice("2d20").unwrap() >= 39 {
+        if let Err(e) = ChannelId::new(get_id_from_env("ABB_ANNOUNCEMENT_CHANNEL"))
+            .send_message(
+                &ctx.http,
+                CreateMessage::new()
+                    .content(format!("Hey, <@!{}>! Yes, you!", id))
+                    .add_embed(
+                        CreateEmbed::new()
+                            .title(title)
+                            .description(body)
+                            .colour(Colour::from_rgb(255, 255, 0)),
+                    ),
+            )
             .await
         {
             eprintln!("Error sending announcement: {}", e);

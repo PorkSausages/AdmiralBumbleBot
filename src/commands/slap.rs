@@ -5,7 +5,7 @@ use serenity::{
 
 pub async fn slap(ctx: &Context, msg: &Message, target: &str, args: &str) {
     let slapper = &msg.author.name;
-    let slappee = UserId(target.parse().expect("Error parsing target"))
+    let slappee = UserId::new(target.parse().expect("Error parsing target"))
         .to_user(&ctx.http)
         .await
         .unwrap()

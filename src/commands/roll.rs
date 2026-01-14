@@ -1,10 +1,9 @@
 use serenity::{model::channel::Message, prelude::Context};
 
+use crate::util::roll_dice;
+
 pub async fn roll(ctx: &Context, msg: &Message, args: &str) {
-    let result = match d20::roll_dice(args) {
-        Ok(result) => result.total,
-        Err(_) => 0,
-    };
+    let result = roll_dice(args).unwrap_or(0);
 
     if result == 0 {
         msg.channel_id

@@ -1,5 +1,7 @@
 use serenity::{client::Context, model::channel::Message};
 
+use crate::util::{get_id_from_env, roll_dice};
+
 const OK_PASTA: &str = "\"Ok\"? Are you fucking kidding me? I spent a decent portion of my life writing all of that and your response to me is \"Ok\"? Are you so mentally handicapped that the only word you can comprehend is \"Ok\" - or are you just some fucking asshole who thinks that with such a short response, he can make a statement about how meaningless what was written was? Well, I'll have you know that what I wrote was NOT meaningless, in fact, I even had my written work proof-read by several professors of literature. Don't believe me? I doubt you would, and your response to this will probably be \"Ok\" once again. Do I give a fuck? No, does it look like I give even the slightest fuck about two fucking letters? I bet you took the time to type those two letters too, I bet you sat there and chuckled to yourself for 20 hearty seconds before pressing \"send\". You're so fucking pathetic. I'm honestly considering directing you to a psychiatrist, but I'm simply far too nice to do something like that. You, however, will go out of your way to make a fool out of someone by responding to a well-thought-out, intelligent, or humorous statement that probably took longer to write than you can last in bed with a chimpanzee. What do I have to say to you? Absolutely nothing. I couldn't be bothered to respond to such a worthless attempt at a response. Do you want \"Ok\" on your gravestone?";
 const BYE_PASTA: &str = "Bye. I'm leaving the server because I'm bored. Despite talking to all of you for a while I don't care about any of you at all. I lied. I'm not 14 I'm 13. And a girl. I can probably draw better than yall as well. Just sayin. Cya.";
 const SHIRTLESS_PASTA: &str = "Me, Me when your girl, You, You when your girl, When your girl see, When your girl sees me, When, When Like, When I'm like shirtless, So, So, Soaking wet, Get";
@@ -13,13 +15,13 @@ const BITWIG_VID: &str = "https://cdn.discordapp.com/attachments/784498744506580
 const SENNHEISER_VID: &str = "https://cdn.discordapp.com/attachments/784498744506580992/1224166761692397660/Snapsave.app_434596257_1501537313768606_3029272559969168436_n.mp4";
 
 pub async fn copypastas(ctx: &Context, msg: &Message) {
-    if msg.channel_id.0 == get_env!("ABB_SHITPOST_CHANNEL", u64) {
+    if msg.channel_id == get_id_from_env("ABB_SHITPOST_CHANNEL") {
         return;
     }
 
     pasta(ctx, msg, OK_PASTA, "Ok").await;
 
-    if d20::roll_dice("1d20").unwrap().total > 10 {
+    if roll_dice("1d20").unwrap() > 10 {
         return;
     }
 
@@ -40,7 +42,7 @@ pub async fn copypastas(ctx: &Context, msg: &Message) {
 
 pub async fn pasta(ctx: &Context, msg: &Message, trigger: &str, pasta: &str) {
     if msg.content.eq_ignore_ascii_case(trigger)
-        && msg.author.id.0 != get_env!("ABB_BOT_USER_ID", u64)
+        && msg.author.id != get_id_from_env("ABB_BOT_USER_ID")
     {
         msg.channel_id
             .say(&ctx.http, pasta)
@@ -51,12 +53,12 @@ pub async fn pasta(ctx: &Context, msg: &Message, trigger: &str, pasta: &str) {
 
 pub async fn response(ctx: &Context, msg: &Message, trigger: &str, response: &str) {
     if msg.content.eq_ignore_ascii_case(trigger)
-        && msg.author.id.0 != get_env!("ABB_BOT_USER_ID", u64)
+        && msg.author.id != get_id_from_env("ABB_BOT_USER_ID")
     {
         msg.channel_id
             .say(
                 &ctx.http,
-                format!("<@{}> {}", msg.author.id.as_u64(), response),
+                format!("<@{}> {}", msg.author.id.get(), response),
             )
             .await
             .expect("Error sending message");
