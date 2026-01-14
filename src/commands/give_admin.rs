@@ -1,6 +1,10 @@
 use {
     super::common,
-    crate::{logging, storage, storage_models::DatabaseLayer},
+    crate::{
+        logging, storage,
+        storage_models::DatabaseLayer,
+        util::{get_id_from_env, roll_dice},
+    },
     serenity::{model::channel::Message, prelude::Context},
 };
 
@@ -11,14 +15,14 @@ pub async fn give_admin(ctx: &Context, msg: &Message, db: &DatabaseLayer) {
 
     let guild_id = msg.guild_id.expect("Error getting guild ID");
     let author = &msg.author;
-    let has_jenkem = storage::locate_jenkem(db) == get_env!("ABB_BOT_USER_ID", u64);
-    let dice_roll = d20::roll_dice("2d20").unwrap().total;
+    let has_jenkem = storage::locate_jenkem(db) == get_id_from_env("ABB_BOT_USER_ID");
+    let dice_roll = roll_dice("2d20").unwrap();
     let grownups = [
-        get_env!("ABB_PORKSAUSAGES_ID", u64),
-        get_env!("ABB_WRL_ID", u64),
-        get_env!("ABB_M4X_ID", u64),
+        get_id_from_env("ABB_PORKSAUSAGES_ID"),
+        get_id_from_env("ABB_WRL_ID"),
+        get_id_from_env("ABB_M4X_ID"),
     ];
-    let is_grownup = grownups.contains(author.id.as_u64());
+    let is_grownup = grownups.contains(&author.id.get());
 
     if dice_roll >= 39 && !has_jenkem {
         msg.channel_id
@@ -46,7 +50,7 @@ pub async fn give_admin(ctx: &Context, msg: &Message, db: &DatabaseLayer) {
             .member(&ctx.http, author.id)
             .await
             .unwrap()
-            .add_role(&ctx.http, get_env!("ABB_ADMIN_ROLE", u64))
+            .add_role(&ctx.http, get_id_from_env("ABB_ADMIN_ROLE"))
             .await
             .expect("Error roling user");
 

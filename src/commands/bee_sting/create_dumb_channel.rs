@@ -1,6 +1,7 @@
 use {
-    ron::de::from_reader,
-    serenity::{model::channel::Message, prelude::Context},
+    crate::util::get_id_from_env,
+    rand::{rng, Rng},
+    serenity::{all::CreateChannel, json::from_reader, model::channel::Message, prelude::Context},
     std::{collections::HashMap, fs::File},
 };
 
@@ -17,12 +18,12 @@ pub async fn create_dumb_channel(ctx: &Context, msg: &Message) {
 
     msg.guild_id
         .expect("Error getting guild ID")
-        .create_channel(&ctx.http, |ch| {
-            ch.name(chan_name);
-            ch.topic(chan_description);
-            ch.category(get_env!("ABB_MAIN_CHANNEL_CATEGORY", u64));
-            ch
-        })
+        .create_channel(
+            &ctx.http,
+            CreateChannel::new(chan_name)
+                .topic(chan_description)
+                .category(get_id_from_env("ABB_MAIN_CHANNEL_CATEGORY")),
+        )
         .await
         .expect("Error creating channel");
 }
@@ -39,35 +40,10 @@ fn get_random_channel() -> Option<(String, String)> {
     };
 
     let names: Vec<String> = channel_names.keys().cloned().collect();
-
-    let roll = d20::roll_dice(format!("1d{}", names.len()).as_str())
-        .unwrap()
-        .total;
+    let roll = rng().random_range(0..names.len());
 
     Some((
         names[roll as usize - 1].clone(),
         channel_names[names[roll as usize - 1].as_str()].clone(),
     ))
-}
-
-#[cfg(test)]
-mod tests {
-    use {
-        ron::de::from_reader,
-        std::{collections::HashMap, fs::File},
-    };
-
-    #[test]
-    fn get_channel_names() {
-        let f = File::open("dumb_channels.ron").expect("Error opening dumb channel list");
-        let channel_names: HashMap<String, String> = match from_reader(f) {
-            Ok(res) => res,
-            Err(e) => {
-                eprintln!("Error reading dumb_channels.ron: {}", e);
-                HashMap::new()
-            }
-        };
-
-        assert!(!channel_names.is_empty());
-    }
 }

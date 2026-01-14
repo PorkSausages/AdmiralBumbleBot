@@ -1,11 +1,10 @@
 use {
-    crate::{CLEVERBOT_DELAY_SECONDS, CLEVERBOT_LIMIT},
+    crate::{util::get_id_from_env, CLEVERBOT_DELAY_SECONDS, CLEVERBOT_LIMIT},
     serenity::{
         model::channel::Message,
         prelude::{Context, RwLock},
     },
-    std::{collections::HashMap, sync::Arc},
-    url::form_urlencoded,
+    std::{collections::HashMap, env, sync::Arc},
 };
 
 pub async fn consciousness(
@@ -13,32 +12,32 @@ pub async fn consciousness(
     msg: &Message,
     ignore_list: Arc<RwLock<HashMap<u64, u8>>>,
 ) {
-    if msg.channel_id.0 != get_env!("ABB_BOT_CHANNEL", u64) {
+    if msg.channel_id != get_id_from_env("ABB_BOT_CHANNEL") {
         return;
     }
 
     //Limit snowdude abuse
     let (mut delay_seconds, mut message_limit) = (CLEVERBOT_DELAY_SECONDS, CLEVERBOT_LIMIT);
-    if msg.author.id.0 == get_env!("ABB_SNOWDUDE_ID", u64) {
+    if msg.author.id == get_id_from_env("ABB_SNOWDUDE_ID") {
         delay_seconds = 86400;
         message_limit = 5;
     }
 
     if msg
         .content
-        .starts_with(&format!("<@!{}>", get_env!("ABB_BOT_USER_ID")))
+        .starts_with(&format!("<@!{}>", get_id_from_env("ABB_BOT_USER_ID")))
         || msg
             .content
-            .starts_with(&format!("<@{}>", get_env!("ABB_BOT_USER_ID")))
+            .starts_with(&format!("<@{}>", get_id_from_env("ABB_BOT_USER_ID")))
     //Wtf is this rustfmt
     {
-        let user_id = msg.author.id.0;
+        let user_id = msg.author.id;
         let current_ignore_count: Option<u8>;
 
         {
             let read_lock = ignore_list.read().await;
 
-            current_ignore_count = match read_lock.get(&user_id) {
+            current_ignore_count = match read_lock.get(&user_id.get()) {
                 Some(count) => Some(count + 1),
                 None => Some(1),
             };
@@ -48,7 +47,7 @@ pub async fn consciousness(
             if ignore_count < message_limit {
                 {
                     let mut write_lock = ignore_list.write().await;
-                    write_lock.insert(user_id, current_ignore_count.unwrap());
+                    write_lock.insert(user_id.get(), current_ignore_count.unwrap());
                 }
 
                 tokio::spawn(async move {
@@ -57,29 +56,40 @@ pub async fn consciousness(
                     tokio::time::sleep(std::time::Duration::from_secs(delay_seconds)).await;
 
                     let mut write_lock = arc.write().await;
-                    let current_count = *write_lock.get(&user_id).unwrap();
-                    write_lock.insert(user_id, current_count - 1);
+                    let current_count = *write_lock.get(&user_id.get()).unwrap();
+                    write_lock.insert(user_id.get(), current_count - 1);
                 });
 
                 let content = msg.content.split_once('>').unwrap().1.trim();
 
-                let request_url = form_urlencoded::Serializer::new(format!(
-                    "{}?key={}",
-                    get_env!("ABB_CLEVERBOT_URL"),
-                    get_env!("ABB_CLEVERBOT_API_KEY")
-                ))
-                .append_pair("input", content)
-                .append_pair("cs", &get_env!("ABB_CLEVERBOT_STATE"))
-                .finish();
+                let api_key = env::var("ABB_CLEVERBOT_API_KEY").expect("Missing API Key");
+                let state = env::var("ABB_CLEVERBOT_STATE").expect("Missing State");
+                let base_url = env::var("ABB_CLEVERBOT_URL").expect("Missing URL");
+                let client = reqwest::Client::new();
 
-                let response = reqwest::get(&request_url)
-                    .await
-                    .expect("Error making request to Cleverbot API")
-                    .json::<HashMap<String, String>>()
-                    .await
-                    .expect("Error deserializing Cleverbot response");
+                let params = [
+                    ("key", api_key),
+                    ("input", content.to_string()),
+                    ("cs", state),
+                ];
 
-                let response_message = format!("<@{}> {}", msg.author.id.0, response["output"]);
+                let response = client
+                    .get(&base_url)
+                    .query(&params) // <--- THIS DOES THE MAGIC
+                    .send()
+                    .await
+                    .expect("Bad response from Cleverbot");
+
+                let response_message = format!(
+                    "<@{}> {}",
+                    msg.author.id,
+                    response
+                        .json::<HashMap<String, String>>()
+                        .await
+                        .expect("Can't parse response JSON")
+                        .get("output")
+                        .expect("No output in Response")
+                );
 
                 msg.channel_id
                     .say(&ctx.http, &response_message)

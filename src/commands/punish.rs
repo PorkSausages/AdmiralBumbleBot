@@ -1,6 +1,9 @@
 use {
     super::common,
-    crate::logging,
+    crate::{
+        logging,
+        util::{get_id_from_env, roll_dice},
+    },
     serenity::{
         model::{channel::Message, id::UserId},
         prelude::Context,
@@ -26,15 +29,13 @@ pub async fn punish(
     let guild_id = msg.guild_id.expect("Error getting guild ID");
     let author = &msg.author;
 
-    if common::confirm_admin(ctx, author, guild_id).await
-        || d20::roll_dice("2d20").unwrap().total >= 39
-    {
+    if common::confirm_admin(ctx, author, guild_id).await || roll_dice("2d20").unwrap() >= 39 {
         match punishment_type {
             Punishment::Kick => {
                 if let Err(e) = msg
                     .guild_id
                     .unwrap()
-                    .kick(&ctx.http, UserId(target.parse().unwrap()))
+                    .kick(&ctx.http, UserId::new(target.parse().unwrap()))
                     .await
                 {
                     eprintln!("Error kicking member {}: {}", &target, e);
@@ -54,7 +55,11 @@ pub async fn punish(
                 if let Err(e) = msg
                     .guild_id
                     .unwrap()
-                    .ban(&ctx.http, UserId(target.parse().unwrap()), BAN_DELETE_DAYS)
+                    .ban(
+                        &ctx.http,
+                        UserId::new(target.parse().unwrap()),
+                        BAN_DELETE_DAYS,
+                    )
                     .await
                 {
                     eprintln!("Error banning member {}: {}", &target, e);
@@ -71,14 +76,14 @@ pub async fn punish(
                 logging::log(ctx, &log_text).await;
             }
             Punishment::Mute => {
-                let mut member = ctx
+                let member = ctx
                     .http
-                    .get_member(*guild_id.as_u64(), target.parse().unwrap())
+                    .get_member(guild_id, target.parse().unwrap())
                     .await
                     .expect("Error getting user");
 
                 if let Err(e) = member
-                    .add_role(&ctx.http, get_env!("ABB_MUTE_ROLE", u64))
+                    .add_role(&ctx.http, get_id_from_env("ABB_MUTE_ROLE"))
                     .await
                 {
                     eprintln!("Error muting user: {}", e);
@@ -95,14 +100,14 @@ pub async fn punish(
                 logging::log(ctx, &log_text).await;
             }
             Punishment::Unmute => {
-                let mut member = ctx
+                let member = ctx
                     .http
-                    .get_member(*guild_id.as_u64(), target.parse().unwrap())
+                    .get_member(guild_id, target.parse().unwrap())
                     .await
                     .expect("Error getting user");
 
                 if let Err(e) = member
-                    .remove_role(&ctx.http, get_env!("ABB_MUTE_ROLE", u64))
+                    .remove_role(&ctx.http, get_id_from_env("ABB_MUTE_ROLE"))
                     .await
                 {
                     eprintln!("Error muting user: {}", e);

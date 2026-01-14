@@ -18,10 +18,10 @@ pub async fn get_message_data(ctx: &Context, msg: &Message, target: &str, db: &D
 
     let user_id: u64 = match target.parse() {
         Ok(value) => value,
-        Err(_) => *msg.author.id.as_u64(),
+        Err(_) => msg.author.id.get(),
     };
 
-    let username = UserId(user_id).to_user(&ctx.http).await.unwrap().name;
+    let username = UserId::new(user_id).to_user(&ctx.http).await.unwrap().name;
 
     let data = storage::get_user_message_data(user_id, db);
 

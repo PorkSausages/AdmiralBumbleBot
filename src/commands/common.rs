@@ -7,12 +7,18 @@ use serenity::{
     prelude::Context,
 };
 
+use crate::util::get_id_from_env;
+
 pub async fn confirm_admin(ctx: &Context, user: &User, guild: GuildId) -> bool {
     match user
-        .has_role(&ctx.http, guild, RoleId(get_env!("ABB_ADMIN_ROLE", u64)))
+        .has_role(
+            &ctx.http,
+            guild,
+            RoleId::new(get_id_from_env("ABB_ADMIN_ROLE")),
+        )
         .await
     {
-        Ok(b) => b || user.id == get_env!("ABB_USER_ID", u64),
+        Ok(b) => b || user.id == RoleId::new(get_id_from_env("ABB_USER_ID")).get(),
         Err(e) => {
             eprintln!("Error authenticating user: {}", e);
             false
@@ -21,8 +27,8 @@ pub async fn confirm_admin(ctx: &Context, user: &User, guild: GuildId) -> bool {
 }
 
 pub fn in_bot_channel(msg: &Message) -> bool {
-    if msg.channel_id.0 == get_env!("ABB_BOT_CHANNEL", u64)
-        || msg.channel_id.0 == get_env!("ABB_BOT_TEST_CHANNEL", u64)
+    if msg.channel_id.get() == get_id_from_env("ABB_BOT_CHANNEL")
+        || msg.channel_id.get() == get_id_from_env("ABB_BOT_TEST_CHANNEL")
     {
         return true;
     }
@@ -31,7 +37,11 @@ pub fn in_bot_channel(msg: &Message) -> bool {
 
 pub async fn has_wuss_role(ctx: &Context, user: &User, guild: GuildId) -> bool {
     match user
-        .has_role(&ctx.http, guild, RoleId(get_env!("ABB_WUSS_ROLE", u64)))
+        .has_role(
+            &ctx.http,
+            guild,
+            RoleId::new(get_id_from_env("ABB_WUSS_ROLE")),
+        )
         .await
     {
         Ok(b) => b,

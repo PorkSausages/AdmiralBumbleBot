@@ -1,12 +1,17 @@
-use serenity::{model::id::ChannelId, prelude::Context};
+use serenity::{
+    all::{CreateAllowedMentions, CreateMessage},
+    model::id::ChannelId,
+    prelude::Context,
+};
+
+use crate::util::get_id_from_env;
 
 pub async fn log(ctx: &Context, message: &str) {
-    if let Err(e) = ChannelId(get_env!("ABB_LOG_CHANNEL", u64))
-        .send_message(&ctx.http, |msg| {
-            msg.content(message).allowed_mentions(|am| am.empty_parse())
-        })
+    let message = CreateMessage::new()
+        .content(message)
+        .allowed_mentions(CreateAllowedMentions::new().empty_users());
+    ChannelId::new(get_id_from_env("ABB_LOG_CHANNEL"))
+        .send_message(&ctx.http, message)
         .await
-    {
-        eprintln!("Error sending message: {}", e);
-    }
+        .expect("Error logging message.");
 }
