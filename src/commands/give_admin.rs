@@ -2,20 +2,20 @@ use {
     super::common,
     crate::{
         logging, storage,
-        storage_models::DatabaseLayer,
+        storage_models::Scratchpad,
         util::{get_id_from_env, roll_dice},
     },
     serenity::{model::channel::Message, prelude::Context},
 };
 
-pub async fn give_admin(ctx: &Context, msg: &Message, db: &DatabaseLayer) {
+pub async fn give_admin(ctx: &Context, msg: &Message, pad: &Scratchpad) {
     if !common::in_bot_channel(msg) {
         return;
     }
 
     let guild_id = msg.guild_id.expect("Error getting guild ID");
     let author = &msg.author;
-    let has_jenkem = storage::locate_jenkem(db) == get_id_from_env("ABB_BOT_USER_ID");
+    let has_jenkem = storage::locate_jenkem(pad) == get_id_from_env("ABB_BOT_USER_ID");
     let dice_roll = roll_dice("2d20").unwrap();
     let grownups = [
         get_id_from_env("ABB_PORKSAUSAGES_ID"),

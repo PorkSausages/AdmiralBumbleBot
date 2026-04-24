@@ -1,12 +1,16 @@
 use std::env;
 
-use rand::Rng;
+use rand::{seq::SliceRandom, Rng};
 
 pub fn get_id_from_env(key: &str) -> u64 {
     env::var(key)
         .unwrap_or_else(|_| panic!("{}", format!("Error getting {} from env", key).to_string()))
         .parse()
         .unwrap_or_else(|_| panic!("{}", format!("Error parsing {} from env", key).to_string()))
+}
+
+pub fn random_string<'a>(strings: &[&'a str]) -> &'a str {
+    strings.choose(&mut rand::thread_rng()).copied().unwrap()
 }
 
 pub fn roll_dice(notation: &str) -> Result<u32, String> {

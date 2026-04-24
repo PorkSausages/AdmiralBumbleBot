@@ -1,13 +1,11 @@
 #![warn(clippy::all, clippy::needless_pass_by_value)]
 
 use {
-    crate::storage_models::DatabaseLayer,
+    crate::storage_models::Scratchpad,
     handler::Handler,
-    serenity::{
-        prelude::{GatewayIntents, RwLock},
-        Client,
-    },
-    std::{collections::HashMap, env, sync::Arc},
+    redb::Database,
+    serenity::{prelude::GatewayIntents, Client},
+    std::{env, sync::Arc},
 };
 
 mod commands;
@@ -33,8 +31,8 @@ async fn main() {
 
     let mut client = Client::builder(env::var("ABB_TOKEN").expect("No bot token"), intents)
         .event_handler(Handler {
-            storage: Arc::new(DatabaseLayer::new("data.redb")),
-            ignore_list: Arc::new(RwLock::new(HashMap::new())),
+            db: Arc::new(Database::create("data.redb").expect("Failed to open DB")),
+            pad: Scratchpad::new(),
         })
         .await
         .expect("Error creating client");

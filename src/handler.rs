@@ -1,7 +1,7 @@
 use {
     crate::{
         commands, logging, storage,
-        storage_models::DatabaseLayer,
+        storage_models::Scratchpad,
         util::{get_id_from_env, roll_dice},
     },
     serenity::{
@@ -17,12 +17,12 @@ use {
         prelude::*,
     },
     similar::{Algorithm, ChangeTag, TextDiff},
-    std::{collections::HashMap, sync::Arc, time},
+    std::{sync::Arc, time},
 };
 
 pub struct Handler {
-    pub storage: Arc<DatabaseLayer>,
-    pub ignore_list: Arc<RwLock<HashMap<u64, u8>>>,
+    pub db: Arc<redb::Database>,
+    pub pad: Scratchpad,
 }
 
 #[async_trait]
@@ -63,8 +63,7 @@ impl EventHandler for Handler {
     }
 
     async fn message(&self, ctx: Context, msg: Message) {
-        let arc = self.ignore_list.clone();
-        commands::execute(&ctx, &msg, &self.storage, arc).await;
+        commands::execute(&ctx, &msg, &self.db, &self.pad).await;
 
         let user_id = msg.author.id;
         let channel_id = msg.channel_id;
@@ -79,7 +78,7 @@ impl EventHandler for Handler {
             channel_id.get(),
             word_count,
             timestamp,
-            &self.storage,
+            &self.db,
         );
     }
 

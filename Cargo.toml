@@ -14,6 +14,7 @@ tokio = { version = "1.49.0", features = ["rt-multi-thread"] }
 regex = "1.12.2"
 dotenvy = "0.15.7"
 serde = "1.0.228"
+serde_json = "1.0.149"
 reqwest = { version = "0.12", default-features = false, features = ["json", "native-tls"] }
 similar = "2.7.0"
 redb = "3.1.0"

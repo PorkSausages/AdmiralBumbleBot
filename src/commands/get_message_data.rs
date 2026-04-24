@@ -1,9 +1,7 @@
 use {
     super::common,
-    crate::{
-        storage,
-        storage_models::{DatabaseLayer, MessageModel},
-    },
+    crate::{storage, storage_models::MessageModel},
+    redb::Database,
     serenity::{
         model::{channel::Message, id::UserId},
         prelude::Context,
@@ -11,7 +9,7 @@ use {
     std::collections::HashMap,
 };
 
-pub async fn get_message_data(ctx: &Context, msg: &Message, target: &str, db: &DatabaseLayer) {
+pub async fn get_message_data(ctx: &Context, msg: &Message, target: &str, db: &Database) {
     if !common::in_bot_channel(msg) {
         return;
     }

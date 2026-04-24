@@ -19,6 +19,7 @@ dependencies = [
  "regex",
  "reqwest",
  "serde",
+ "serde_json",
  "serenity",
  "similar",
  "tokio",

@@ -1,5 +1,5 @@
 use {
-    rand::seq::SliceRandom, serenity::{model::channel::Message, prelude::Context}
+    crate::storage_models::Scratchpad, rand::seq::SliceRandom, serenity::{model::channel::Message, prelude::Context}
 };
 
 mod create_dumb_channel;
@@ -14,7 +14,7 @@ enum Sting {
 
 const STINGS: &[Sting] = &[Sting::CreateDumbChannel, Sting::Kick, Sting::Mute];
 
-pub async fn bee_sting(ctx: &Context, msg: &Message) {
+pub async fn bee_sting(ctx: &Context, msg: &Message, pad: &Scratchpad) {
     msg.channel_id
         .say(&ctx.http, "*Stings you*")
         .await
@@ -23,7 +23,7 @@ pub async fn bee_sting(ctx: &Context, msg: &Message) {
     let selection = { STINGS.choose(&mut rand::thread_rng()) };
 
     match selection {
-        Some(Sting::CreateDumbChannel) => create_dumb_channel::create_dumb_channel(ctx, msg).await,
+        Some(Sting::CreateDumbChannel) => create_dumb_channel::create_dumb_channel(ctx, msg, pad).await,
         Some(Sting::Kick) => kick::kick(ctx, msg).await,
         Some(Sting::Mute) => mute::mute(ctx, msg).await,
         None => {}
