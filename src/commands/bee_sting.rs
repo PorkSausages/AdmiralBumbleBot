@@ -1,5 +1,7 @@
 use {
-    crate::storage_models::Scratchpad, rand::seq::SliceRandom, serenity::{model::channel::Message, prelude::Context}
+    crate::storage_models::Scratchpad,
+    rand::seq::SliceRandom,
+    serenity::{model::channel::Message, prelude::Context},
 };
 
 mod create_dumb_channel;
@@ -23,7 +25,9 @@ pub async fn bee_sting(ctx: &Context, msg: &Message, pad: &Scratchpad) {
     let selection = { STINGS.choose(&mut rand::thread_rng()) };
 
     match selection {
-        Some(Sting::CreateDumbChannel) => create_dumb_channel::create_dumb_channel(ctx, msg, pad).await,
+        Some(Sting::CreateDumbChannel) => {
+            create_dumb_channel::create_dumb_channel(ctx, msg, pad).await
+        }
         Some(Sting::Kick) => kick::kick(ctx, msg).await,
         Some(Sting::Mute) => mute::mute(ctx, msg).await,
         None => {}

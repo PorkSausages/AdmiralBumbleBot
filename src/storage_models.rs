@@ -20,9 +20,9 @@ pub struct JenkemModel {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct PastaModel {
-    pub trigger: String,
+    pub triggers: Vec<String>,
     pub payload: String,
-    pub chance: String,
+    pub chance: u32,
     pub includes_mention: bool,
 }
 

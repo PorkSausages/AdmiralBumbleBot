@@ -17,9 +17,9 @@ pub async fn consciousness(ctx: &Context, msg: &Message, pad: &Scratchpad) {
         || !(msg
             .content
             .starts_with(&format!("<@!{}>", get_id_from_env("ABB_BOT_USER_ID")))
-        || msg
-            .content
-            .starts_with(&format!("<@{}>", get_id_from_env("ABB_BOT_USER_ID"))))
+            || msg
+                .content
+                .starts_with(&format!("<@{}>", get_id_from_env("ABB_BOT_USER_ID"))))
     {
         return;
     }

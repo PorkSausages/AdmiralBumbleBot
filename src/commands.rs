@@ -24,13 +24,14 @@ mod give_admin;
 mod health;
 mod help;
 mod jenkem;
+mod pasta;
 mod punish;
 mod roll;
 mod slap;
 
 pub async fn execute(ctx: &Context, msg: &Message, db: &Database, pad: &Scratchpad) {
     sonic(ctx, msg).await;
-    // pastas::copypastas(ctx, msg).await;
+    pasta::check_pasta(ctx, msg, pad).await;
     consciousness::consciousness(ctx, msg, pad).await;
 
     if !msg.content.starts_with('$') {
@@ -86,6 +87,9 @@ pub async fn execute(ctx: &Context, msg: &Message, db: &Database, pad: &Scratchp
         "$jenkemStreak" => jenkem::jenkem_streak(ctx, msg, pad).await,
         "$roll" => roll::roll(ctx, msg, &args).await,
         "$beeHealthStatus" => health::health(ctx, msg).await,
+        "$getPasta" => pasta::get_pasta(ctx, msg, pad, &args).await,
+        "$setPasta" => pasta::set_pasta(ctx, msg, pad, &args).await,
+        "$delPasta" => pasta::del_pasta(ctx, msg, pad, &args).await,
         _ => {}
     };
 }

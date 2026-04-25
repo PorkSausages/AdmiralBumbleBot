@@ -1,11 +1,11 @@
 use {
     crate::{storage_models::Scratchpad, util::get_id_from_env},
-    rand::{Rng, thread_rng},
+    rand::{thread_rng, Rng},
     serenity::{all::CreateChannel, model::channel::Message, prelude::Context},
 };
 
 pub async fn create_dumb_channel(ctx: &Context, msg: &Message, pad: &Scratchpad) {
-    let channels = pad.with(|pad| {pad.dumb_channels.clone()});
+    let channels = pad.with(|pad| pad.dumb_channels.clone());
     let names: Vec<String> = channels.keys().cloned().collect();
     let roll = thread_rng().gen_range(0..names.len());
 
