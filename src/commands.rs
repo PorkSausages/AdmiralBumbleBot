@@ -20,6 +20,7 @@ mod buzz;
 mod clean;
 mod common;
 mod get_message_data;
+pub mod get_message_quips;
 mod give_admin;
 mod health;
 mod help;
