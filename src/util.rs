@@ -9,7 +9,7 @@ pub fn get_id_from_env(key: &str) -> u64 {
         .unwrap_or_else(|_| panic!("{}", format!("Error parsing {} from env", key).to_string()))
 }
 
-pub fn random_string<'sonic>(strings: &[&'sonic str]) -> String {
+pub fn random_string(strings: &[&str]) -> String {
     strings.choose(&mut rand::thread_rng()).unwrap().to_string()
 }
 
