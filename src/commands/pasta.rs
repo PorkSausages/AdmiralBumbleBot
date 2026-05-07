@@ -5,11 +5,15 @@ use crate::{
 };
 use serenity::{model::channel::Message, prelude::Context};
 
-pub async fn check_pasta(ctx: &Context, msg: &Message, pad: &Scratchpad) {
-    if msg.channel_id == get_id_from_env("ABB_SHITPOST_CHANNEL") //"attempt to reduce copypasta spam"
-        || msg.author.id == get_id_from_env("ABB_BOT_USER_ID")
+pub async fn check_pasta(
+    ctx: &Context,
+    msg: &Message,
+    pad: &Scratchpad,
+) -> Result<(), anyhow::Error> {
+    if msg.channel_id == get_id_from_env("ABB_SHITPOST_CHANNEL")? //"attempt to reduce copypasta spam"
+        || msg.author.id == get_id_from_env("ABB_BOT_USER_ID")?
     {
-        return;
+        return Ok(());
     }
 
     let Some(pasta) = pad.with(|pad| {
@@ -23,11 +27,11 @@ pub async fn check_pasta(ctx: &Context, msg: &Message, pad: &Scratchpad) {
             })
             .map(|(_slug, pasta)| pasta.clone())
     }) else {
-        return;
+        return Ok(());
     };
 
-    if roll_dice("1d100").unwrap() > pasta.chance {
-        return;
+    if roll_dice("1d100")? > pasta.chance {
+        return Ok(());
     }
 
     let payload = format!(
@@ -40,13 +44,17 @@ pub async fn check_pasta(ctx: &Context, msg: &Message, pad: &Scratchpad) {
         pasta.payload
     );
 
-    msg.channel_id
-        .say(&ctx.http, &payload)
-        .await
-        .expect("Error sending message");
+    msg.channel_id.say(&ctx.http, &payload).await?;
+
+    Ok(())
 }
 
-pub async fn get_pasta(ctx: &Context, msg: &Message, pad: &Scratchpad, args: &str) {
+pub async fn get_pasta(
+    ctx: &Context,
+    msg: &Message,
+    pad: &Scratchpad,
+    args: &str,
+) -> Result<(), anyhow::Error> {
     let Some(pasta) = pad.with(|pad| {
         pad.pastas
             .iter()
@@ -61,9 +69,8 @@ pub async fn get_pasta(ctx: &Context, msg: &Message, pad: &Scratchpad, args: &st
                     pad.with(|pad| { pad.pastas.keys().cloned().collect::<Vec<String>>() })
                 ),
             )
-            .await
-            .expect("Error sending message");
-        return;
+            .await?;
+        return Ok(());
     };
 
     msg.channel_id
@@ -74,19 +81,18 @@ pub async fn get_pasta(ctx: &Context, msg: &Message, pad: &Scratchpad, args: &st
                 pasta.triggers, pasta.chance, pasta.includes_mention, pasta.payload
             ),
         )
-        .await
-        .expect("Error sending message");
+        .await?;
+    Ok(())
 }
 
-pub async fn set_pasta(ctx: &Context, msg: &Message, pad: &Scratchpad, args: &str) {
-    if !confirm_admin(
-        ctx,
-        &msg.author,
-        msg.guild_id.expect("Error getting guild ID"),
-    )
-    .await
-    {
-        return;
+pub async fn set_pasta(
+    ctx: &Context,
+    msg: &Message,
+    pad: &Scratchpad,
+    args: &str,
+) -> Result<(), anyhow::Error> {
+    if !confirm_admin(ctx, &msg.author, msg.guild_id.expect("BumbleBot does not support DMs")).await? {
+        return Ok(());
     }
 
     let (slug, pasta) = match {
@@ -147,13 +153,12 @@ pub async fn set_pasta(ctx: &Context, msg: &Message, pad: &Scratchpad, args: &st
                     error
                 ),
             )
-            .await
-            .expect("Error sending message");
-            return;
+            .await?;
+            return Ok(());
         }
     };
 
-    pad.with_mut(|pad| pad.pastas.insert(slug.clone(), pasta.clone()));
+    pad.with_mut(|pad| pad.pastas.insert(slug.clone(), pasta.clone()))?;
 
     msg.channel_id
     .say(
@@ -163,22 +168,28 @@ pub async fn set_pasta(ctx: &Context, msg: &Message, pad: &Scratchpad, args: &st
             slug, pasta.triggers, pasta.chance, pasta.includes_mention, pasta.payload
         ),
     )
-    .await
-    .expect("Error sending message");
+    .await?;
+
+    Ok(())
 }
 
-pub async fn del_pasta(ctx: &Context, msg: &Message, pad: &Scratchpad, args: &str) {
+pub async fn del_pasta(
+    ctx: &Context,
+    msg: &Message,
+    pad: &Scratchpad,
+    args: &str,
+) -> Result<(), anyhow::Error> {
     if !confirm_admin(
         ctx,
         &msg.author,
-        msg.guild_id.expect("Error getting guild ID"),
+        msg.guild_id.expect("BumbleBot does not support DMs"),
     )
-    .await
+    .await?
     {
-        return;
+        return Ok(());
     }
 
-    let Some(_pasta) = pad.with_mut(|pad| pad.pastas.remove(args)) else {
+    if pad.with_mut(|pad| pad.pastas.remove(args))?.is_none() {
         msg.channel_id
             .say(
                 &ctx.http,
@@ -187,9 +198,8 @@ pub async fn del_pasta(ctx: &Context, msg: &Message, pad: &Scratchpad, args: &st
                     pad.with(|pad| { pad.pastas.keys().cloned().collect::<Vec<String>>() })
                 ),
             )
-            .await
-            .expect("Error sending message");
-        return;
+            .await?;
+        return Ok(());
     };
 
     msg.channel_id
@@ -205,6 +215,7 @@ pub async fn del_pasta(ctx: &Context, msg: &Message, pad: &Scratchpad, args: &st
                 ])
             ),
         )
-        .await
-        .expect("Error sending message");
+        .await?;
+
+    Ok(())
 }

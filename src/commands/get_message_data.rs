@@ -32,7 +32,7 @@ const MID_TOTAL: usize = 40; //how many messages in a channel to qualify as Abso
 const BIG_WORDS: usize = 10; //how many average words per message to qualify as AbsoluteAmount::Big
 const MID_WORDS: usize = 5; //how many average words per message to qualify as AbsoluteAmount::Medium
 
-fn get_word_amount(bucket: &Vec<MessageModel>) -> AbsoluteAmount {
+fn get_word_amount(bucket: &[MessageModel]) -> AbsoluteAmount {
     get_absolute_amount(
         bucket.iter().map(|msg| msg.words as usize).sum::<usize>() / bucket.len(),
         BIG_WORDS,
@@ -40,11 +40,15 @@ fn get_word_amount(bucket: &Vec<MessageModel>) -> AbsoluteAmount {
     )
 }
 
-fn get_total_amount(bucket: &Vec<MessageModel>) -> AbsoluteAmount {
+fn get_total_amount(bucket: &[MessageModel]) -> AbsoluteAmount {
     get_absolute_amount(bucket.len(), BIG_TOTAL, MID_TOTAL)
 }
 
-async fn send_no_data(channel: &ChannelId, username: &str, ctx: &Context) {
+async fn send_no_data(
+    channel: &ChannelId,
+    username: &str,
+    ctx: &Context,
+) -> Result<(), anyhow::Error> {
     channel
     .say(
         &ctx.http,
@@ -59,23 +63,27 @@ async fn send_no_data(channel: &ChannelId, username: &str, ctx: &Context) {
             "-# Talk in 3 or more main channels so we have enough data to ~~sell to advertisers~~ personalise your experience."
         ),
     )
-    .await
-    .unwrap();
+    .await?;
+    Ok(())
 }
 
-pub async fn get_message_data(ctx: &Context, msg: &Message, target: &str, db: &Database) {
-    if !common::in_bot_channel(msg) {
+pub async fn get_message_data(
+    ctx: &Context,
+    msg: &Message,
+    target: &str,
+    db: &Database,
+) -> Result<(), anyhow::Error> {
+    if !common::in_bot_channel(msg)? {
         msg.channel_id
             .say(
                 &ctx.http,
                 format!(
                     "This command only works in <#{}>.",
-                    get_id_from_env("ABB_BOT")
+                    get_id_from_env("ABB_BOT")?
                 ),
             )
-            .await
-            .unwrap();
-        return;
+            .await?;
+        return Ok(());
     }
 
     let user_id: u64 = match target.parse() {
@@ -83,29 +91,29 @@ pub async fn get_message_data(ctx: &Context, msg: &Message, target: &str, db: &D
         Err(_) => msg.author.id.get(),
     };
 
-    let username = UserId::new(user_id).to_user(&ctx.http).await.unwrap().name;
+    let username = UserId::new(user_id).to_user(&ctx.http).await?.name;
     let now: SystemTime = SystemTime::now();
 
-    let data = storage::get_user_message_data(user_id, db);
+    let data = storage::get_user_message_data(user_id, db)?;
     if data.is_empty() {
-        send_no_data(&msg.channel_id, &username, ctx).await;
-        return;
+        send_no_data(&msg.channel_id, &username, ctx).await?;
+        return Ok(());
     }
 
-    let first = data.first().unwrap().clone();
+    let first = data.first().expect("Vec isn't empty").clone();
     let mut buckets: HashMap<Channel, Vec<MessageModel>> = HashMap::new();
-    let delta = now.duration_since(UNIX_EPOCH).unwrap() - Duration::from_secs(first.time);
+    let delta = now.duration_since(UNIX_EPOCH)? - Duration::from_secs(first.time);
 
     data.into_iter().for_each(|msg| {
-        let Some(channel) = id2channel(msg.channel) else {
+        let Ok(Some(channel)) = id2channel(msg.channel) else {
             return;
         };
         buckets.entry(channel).or_default().push(msg);
     });
 
     if buckets.len() < 3 {
-        send_no_data(&msg.channel_id, &username, ctx).await;
-        return;
+        send_no_data(&msg.channel_id, &username, ctx).await?;
+        return Ok(());
     }
 
     let mut sorted_buckets: Vec<(Channel, Vec<MessageModel>)> = buckets.into_iter().collect();
@@ -117,27 +125,26 @@ pub async fn get_message_data(ctx: &Context, msg: &Message, target: &str, db: &D
     //we need to talk about user. it began with x words in the x channel, then went south
     //it's not too late, there's still hope
     response.push_str(&random_string(&[
-        format!("When did it go wrong for **{}**? ", username).as_str(),
-        format!("It's not looking good for **{}**. ", username).as_str(),
-        format!("We need to address the **{}** situation. ", username).as_str(),
+        &format!("When did it go wrong for **{}**? ", username),
+        &format!("It's not looking good for **{}**. ", username),
+        &format!("We need to address the **{}** situation. ", username),
     ]));
     response.push_str(
-        format!(
+        &format!(
             "{} with {} innocent word{} in {} channel... then it {} from there. ",
             random_string(&["It all started", "It began", "The story starts"]),
             first.words,
             if first.words != 1 { "s" } else { "" },
             match id2channel(first.channel) {
-                Some(channel) => format!("the {}", channel2name(&channel)),
-                None => String::from_str("some random").unwrap(), //this needs to be a String instead of a &str?
+                Ok(Some(channel)) => format!("the {}", channel2name(channel)),
+                _ => String::from_str("some random")?, //this needs to be a String instead of a &str?
             },
             random_string(&["went south", "quickly spiraled", "rapidly deteriorated"])
         )
-        .as_str(),
     );
     if (delta.as_secs() / LONG_TIME) > 0 {
         response.push_str(
-            format!(
+            &format!(
                 "{} - {}.",
                 random_string(&[
                     "Sadly, it may already be too late",
@@ -150,11 +157,10 @@ pub async fn get_message_data(ctx: &Context, msg: &Message, target: &str, db: &D
                     "it's truly bleak"
                 ])
             )
-            .as_str(),
         );
     } else if (delta.as_secs() / MID_TIME) > 0 {
         response.push_str(
-            format!(
+            &format!(
                 "{} - {}.",
                 random_string(&[
                     "It's not too late, though",
@@ -167,11 +173,10 @@ pub async fn get_message_data(ctx: &Context, msg: &Message, target: &str, db: &D
                     "if they turn back now"
                 ])
             )
-            .as_str(),
         );
     } else {
         response.push_str(
-            format!(
+            &format!(
                 "{} - {}.",
                 random_string(&[
                     "They're still in the early stages, though",
@@ -184,18 +189,17 @@ pub async fn get_message_data(ctx: &Context, msg: &Message, target: &str, db: &D
                     "they can still fix this"
                 ])
             )
-            .as_str(),
         );
     }
 
     response.push_str("\n\n");
 
     //fav channel
-    let (fav_channel, fav_bucket) = sorted_buckets.first().unwrap();
+    let (fav_channel, fav_bucket) = &sorted_buckets[0];
     let fav_total_amount = get_total_amount(fav_bucket);
     let fav_word_amount = get_word_amount(fav_bucket);
     response.push_str(
-        format!(
+        &format!(
             //strangely, they only care about xing in the x channel. a whopping x messages sent, but each message is short.
             //they like to yap about xing - but it's mostly just yapping. 
             //i don't get the big deal... why not just do y?
@@ -206,8 +210,8 @@ pub async fn get_message_data(ctx: &Context, msg: &Message, target: &str, db: &D
                 "they're obsessed with",
                 "they only seem interested in"
             ]),
-            channel2quip(fav_channel),
-            channel2name(fav_channel),
+            channel2quip(*fav_channel),
+            channel2name(*fav_channel),
             total_quip(&fav_total_amount),
             fav_bucket.len(),
             conditional_quip(fav_total_amount == fav_word_amount),
@@ -229,7 +233,7 @@ pub async fn get_message_data(ctx: &Context, msg: &Message, target: &str, db: &D
                     "They might spend an afternoon"
                 ]),
             },
-            channel2quip(fav_channel),
+            channel2quip(*fav_channel),
             conditional_quip(fav_total_amount == fav_word_amount),
             if fav_total_amount > fav_word_amount {
                 random_string(&[
@@ -255,19 +259,18 @@ pub async fn get_message_data(ctx: &Context, msg: &Message, target: &str, db: &D
                 "I'm not sure I understand the point",
                 "It's honestly quite baffling"
             ]),
-            fav_quip(fav_channel)
+            fav_quip(*fav_channel)
         )
-        .as_str(),
     );
 
     response.push_str("\n\n");
 
     //2nd fav channel
-    let (snd_channel, snd_bucket) = sorted_buckets.get(1).unwrap();
+    let (snd_channel, snd_bucket) = &sorted_buckets[1];
     let snd_total_amount = get_total_amount(snd_bucket);
     let snd_word_amount = get_word_amount(snd_bucket);
     response.push_str(
-        format!(
+        &format!(
             //when they're not xing, they're ying in the y channel - but it's not the same
             //a measly y messages sent, and each message is short.
             //ironically, it seems like they're not as enthusisatic about ying as they are about xing, even if they yap about it more.
@@ -278,9 +281,9 @@ pub async fn get_message_data(ctx: &Context, msg: &Message, target: &str, db: &D
                 "In between sessions of",
                 "If they're not"
             ]),
-            channel2quip(fav_channel),
-            channel2quip(snd_channel),
-            channel2name(snd_channel),
+            channel2quip(*fav_channel),
+            channel2quip(*snd_channel),
+            channel2name(*snd_channel),
             conditional_quip(fav_total_amount == snd_total_amount),
             if fav_total_amount != snd_total_amount {
                 random_string(&[
@@ -325,8 +328,8 @@ pub async fn get_message_data(ctx: &Context, msg: &Message, target: &str, db: &D
                     "they're just as locked in when it comes to",
                 ])
             },
-            channel2quip(snd_channel),
-            channel2quip(fav_channel),
+            channel2quip(*snd_channel),
+            channel2quip(*fav_channel),
             if fav_word_amount != snd_word_amount {
                 random_string(&[
                     "even if",
@@ -343,20 +346,19 @@ pub async fn get_message_data(ctx: &Context, msg: &Message, target: &str, db: &D
                 random_string(&["they're not meaningfully contributing to the conversation", "they like to keep it short", "they keep things brief"])
             },
             random_string(&["I can see why they like", "I can see why they prefer", "It's obvious why they enjoy"]),
-            channel2name(fav_channel),
-            snd_quip(snd_channel)
+            channel2name(*fav_channel),
+            snd_quip(*snd_channel)
         )
-        .as_str(),
     );
 
     response.push_str("\n\n");
 
     //least fav channel
-    let (last_channel, last_bucket) = sorted_buckets.last().unwrap();
+    let (last_channel, last_bucket) = &sorted_buckets[sorted_buckets.len() - 1];
     let last_total_amount = get_total_amount(last_bucket);
     let last_word_amount = get_word_amount(last_bucket);
     response.push_str(
-        format!(
+        &format!(
             //their least favourite thing to do is zing in the z channel - even if they partake in it quite often.
             //compared to their love for ying, zing is barely anything to them - but each of their z messages ironically pack a lot of love.
             //it's funny that they barely post yet say more per message than in the x channel - but i think they should show the z channel more love
@@ -367,8 +369,8 @@ pub async fn get_message_data(ctx: &Context, msg: &Message, target: &str, db: &D
                 "The thing they're interested in least is",
                 "They're really not interested in"
             ]),
-            channel2quip(last_channel),
-            channel2name(last_channel),
+            channel2quip(*last_channel),
+            channel2name(*last_channel),
             conditional_quip(last_total_amount == AbsoluteAmount::Small),
             match last_total_amount {
                 AbsoluteAmount::Small => random_string(&["they're barely active in it", "nobody really sees them there", "they're not there often"]),
@@ -376,8 +378,8 @@ pub async fn get_message_data(ctx: &Context, msg: &Message, target: &str, db: &D
                 AbsoluteAmount::Big => random_string(&["they're always in there", "they're quite active in there", "they show their face quite often."]),
             },
             random_string(&["Compared to their love for", "Compared to how much they love", "When you look at how much they love"]),
-            channel2quip(fav_channel),
-            channel2quip(last_channel),
+            channel2quip(*fav_channel),
+            channel2quip(*last_channel),
             if last_total_amount != fav_total_amount {
                 random_string(&[
                     "is barely anything to them",
@@ -428,36 +430,37 @@ pub async fn get_message_data(ctx: &Context, msg: &Message, target: &str, db: &D
             } else {
                 random_string(&["put less thought into each", "have little to say per", "don't really think about each"])
             },
-            channel2name(fav_channel),
+            channel2name(*fav_channel),
             random_string(&["I think they should give", "It would be nice if they gave", "I personally would give"]),
-            channel2name(last_channel),
+            channel2name(*last_channel),
             random_string(&["more love", "another go", "another shot"]),
-            last_quip(last_channel)
+            last_quip(*last_channel)
         )
-        .as_str(),
     );
 
-    msg.channel_id.say(&ctx.http, &response).await.unwrap();
+    //need to split this over 2 messages otherwise it gets too long
+    msg.channel_id.say(&ctx.http, &response).await?;
     response.clear();
 
     response.push_str("# **Ranked Activity:**\n");
     for (idx, (channel, bucket)) in sorted_buckets.iter().enumerate() {
         response.push_str(
-            format!(
-                "{}. {} in the {} channel (yapping level: {})\n",
-                idx,
-                channel2quip(channel),
-                channel2name(channel),
+            &format!(
+                "**{}.** {} in the **{}** channel (yapping level: {})\n",
+                idx+1,
+                channel2quip(*channel),
+                channel2name(*channel),
                 match get_word_amount(bucket) {
                     AbsoluteAmount::Small => random_string(&["low", "tiny", "minimal"]),
                     AbsoluteAmount::Medium => random_string(&["medium", "fair", "acceptable"]),
                     AbsoluteAmount::Big => random_string(&["huge", "unacceptable", "troubling"]),
                 }
             )
-            .as_str(),
         );
     }
 
-    response.push_str(format!("\n-# Took {:.2?}", now.elapsed().unwrap()).as_str());
-    msg.channel_id.say(&ctx.http, response).await.unwrap();
+    response.push_str(&format!("\n-# Took {:.2?}", now.elapsed()?));
+    msg.channel_id.say(&ctx.http, response).await?;
+
+    Ok(())
 }

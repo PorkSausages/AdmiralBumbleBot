@@ -3,21 +3,27 @@ use serenity::{
     prelude::Context,
 };
 
-pub async fn slap(ctx: &Context, msg: &Message, target: &str, args: &str) {
+pub async fn slap(
+    ctx: &Context,
+    msg: &Message,
+    target: &str,
+    args: &str,
+) -> Result<(), anyhow::Error> {
     let slapper = &msg.author.name;
-    let slappee = UserId::new(target.parse().expect("Error parsing target"))
-        .to_user(&ctx.http)
-        .await
-        .unwrap()
-        .name;
+    let slappee = match target.parse() {
+        Ok(id) => UserId::new(id),
+        Err(_) => {
+            msg.channel_id
+                .say(&ctx.http, "Please specify a victim.")
+                .await?;
+            return Ok(());
+        }
+    };
 
     if args.to_ascii_uppercase().contains("EVERYONE") || args.to_ascii_uppercase().contains("HERE")
     {
-        msg.channel_id
-            .say(&ctx.http, "do not")
-            .await
-            .expect("Error sending message");
-        return;
+        msg.channel_id.say(&ctx.http, "do not").await?;
+        return Ok(());
     }
 
     let message_text = if args
@@ -35,8 +41,7 @@ pub async fn slap(ctx: &Context, msg: &Message, target: &str, args: &str) {
         )
     };
 
-    msg.channel_id
-        .say(&ctx.http, message_text)
-        .await
-        .expect("Error sending message");
+    msg.channel_id.say(&ctx.http, message_text).await?;
+
+    Ok(())
 }

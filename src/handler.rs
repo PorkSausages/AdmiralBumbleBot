@@ -2,7 +2,7 @@ use {
     crate::{
         commands, logging, storage,
         storage_models::Scratchpad,
-        util::{get_id_from_env, roll_dice},
+        util::{get_id_from_env, random_string, roll_dice},
     },
     serenity::{
         all::ActivityData,
@@ -29,21 +29,21 @@ pub struct Handler {
 impl EventHandler for Handler {
     async fn guild_member_addition(&self, ctx: Context, new_member: Member) {
         let join_roles: [u64; 2] = [
-            get_id_from_env("ABB_JOIN_ROLE_1"),
-            get_id_from_env("ABB_JOIN_ROLE_2"),
+            get_id_from_env("ABB_JOIN_ROLE_1").expect("Join Role 1 should be set"),
+            get_id_from_env("ABB_JOIN_ROLE_2").expect("Join Role 2 should be set"),
         ];
 
         new_member
             .add_role(
                 &ctx.http,
-                join_roles[roll_dice("1d2").unwrap() as usize - 1],
+                join_roles[roll_dice("1d2").expect("Valid dice roll") as usize - 1],
             )
             .await
-            .expect("Error roling new user");
+            .expect("Role for new user should be set");
 
         logging::log(
             &ctx,
-            format!("📥 User joined: <@!{}>", new_member.user.id.get()).as_str(),
+            &format!("📥 User joined: <@!{}>", new_member.user.id.get()),
         )
         .await;
     }
@@ -57,20 +57,41 @@ impl EventHandler for Handler {
     ) {
         logging::log(
             &ctx,
-            format!("📤 User left: <@!{}>`", user.id.get()).as_str(),
+            &format!("📤 User left: <@!{}>`", user.id.get()),
         )
         .await;
     }
 
     async fn message(&self, ctx: Context, msg: Message) {
-        commands::execute(&ctx, &msg, &self.db, &self.pad).await;
+        if let Err(err) = commands::execute(&ctx, &msg, &self.db, &self.pad).await {
+            logging::log(
+                &ctx,
+                &format!(
+                    "Error: `{}` when responding to https://discord.com/channels/{}/{}/{}\n```{:#?}```\n-# {} {}'s fault.",
+                    err,
+                    msg.guild_id.expect("BumbleBot does not support DMs"),
+                    msg.channel_id,
+                    msg.id,
+                    err,
+                    random_string(&[
+                        "It's totally",
+                        "It's absolutely not",
+                        "It's probably",
+                        "It's probably not"
+                    ]),
+                    random_string(&["Max", "Tom"])
+                )
+            )
+            .await;
+            eprintln!("Error: {}", err);
+        };
 
         let user_id = msg.author.id;
         let channel_id = msg.channel_id;
         let word_count = msg.content.split(' ').count() as u16;
         let timestamp = time::SystemTime::now()
             .duration_since(time::UNIX_EPOCH)
-            .unwrap()
+            .expect("1970 is no longer the future")
             .as_secs();
 
         storage::log_activity(
@@ -79,7 +100,7 @@ impl EventHandler for Handler {
             word_count,
             timestamp,
             &self.db,
-        );
+        ).expect("Activity should be logged");
     }
 
     async fn message_delete(
@@ -98,13 +119,12 @@ impl EventHandler for Handler {
         let stripped_message = content.replace("`", "");
         logging::log(
             &ctx,
-            format!(
+            &format!(
                 "🗑 Message deleted by <@!{}> in <#{}>:\n`{}`",
                 author_id.get(),
                 channel_id,
                 stripped_message
             )
-            .as_str(),
         )
         .await;
     }
@@ -141,14 +161,14 @@ impl EventHandler for Handler {
                 match change.tag() {
                     ChangeTag::Delete => {
                         //handle deleted words normally
-                        deletion_buffer.push_str(change.as_str().unwrap());
+                        deletion_buffer.push_str(change.as_str().expect("String is UTF-8"));
                     }
                     ChangeTag::Insert => {
                         //handle new words normally
-                        insertion_buffer.push_str(change.as_str().unwrap());
+                        insertion_buffer.push_str(change.as_str().expect("String is UTF-8"));
                     }
                     ChangeTag::Equal => {
-                        let text = change.as_str().unwrap();
+                        let text = change.as_str().expect("String is UTF-8");
 
                         if text.trim().is_empty() {
                             //push spaces to both buffers so they're printed right

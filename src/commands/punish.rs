@@ -2,7 +2,7 @@ use {
     super::common,
     crate::{
         logging,
-        util::{get_id_from_env, roll_dice},
+        util::{get_id_from_env},
     },
     serenity::{
         model::{channel::Message, id::UserId},
@@ -25,101 +25,69 @@ pub async fn punish(
     target: &str,
     args: &str,
     punishment_type: &Punishment,
-) {
-    let guild_id = msg.guild_id.expect("Error getting guild ID");
+) -> Result<(), anyhow::Error> {
+    let guild_id = msg.guild_id.expect("BumbleBot does not support DMs");
     let author = &msg.author;
+    let member = match target.parse() {
+        Ok(id) => ctx.http.get_member(guild_id, id).await?,
+        Err(_) => {
+            msg.channel_id
+                .say(&ctx.http, "Please specify a victim.")
+                .await?;
+            return Ok(());
+        }
+    };
 
-    if common::confirm_admin(ctx, author, guild_id).await || roll_dice("2d20").unwrap() >= 39 {
-        match punishment_type {
-            Punishment::Kick => {
-                if let Err(e) = msg
-                    .guild_id
-                    .unwrap()
-                    .kick(&ctx.http, UserId::new(target.parse().unwrap()))
-                    .await
-                {
-                    eprintln!("Error kicking member {}: {}", &target, e);
-                }
-
-                let log_text = format!(
-                    "👊 <@!{}> was kicked by <@!{}>:\n` ┗ Reason: {}`",
-                    target, author.id, args
-                );
-
-                if let Err(e) = msg.channel_id.say(&ctx.http, &log_text).await {
-                    eprintln!("Error sending message: {}", e);
-                }
-                logging::log(ctx, &log_text).await;
-            }
-            Punishment::Ban => {
-                if let Err(e) = msg
-                    .guild_id
-                    .unwrap()
-                    .ban(
-                        &ctx.http,
-                        UserId::new(target.parse().unwrap()),
-                        BAN_DELETE_DAYS,
-                    )
-                    .await
-                {
-                    eprintln!("Error banning member {}: {}", &target, e);
-                }
-
-                let log_text = format!(
-                    "🚫 <@!{}> was banned by <@!{}>:\n` ┗ Reason: {}`",
-                    target, author.id, args
-                );
-
-                if let Err(e) = msg.channel_id.say(&ctx.http, &log_text).await {
-                    eprintln!("Error sending message: {}", e);
-                }
-                logging::log(ctx, &log_text).await;
-            }
-            Punishment::Mute => {
-                let member = ctx
-                    .http
-                    .get_member(guild_id, target.parse().unwrap())
-                    .await
-                    .expect("Error getting user");
-
-                if let Err(e) = member
-                    .add_role(&ctx.http, get_id_from_env("ABB_MUTE_ROLE"))
-                    .await
-                {
-                    eprintln!("Error muting user: {}", e);
-                }
-
-                let log_text = format!(
-                    "🤐 <@!{}> was muted by <@!{}>:\n` ┗ Reason: {}`",
-                    target, author.id, args
-                );
-
-                if let Err(e) = msg.channel_id.say(&ctx.http, &log_text).await {
-                    eprintln!("Error sending message: {}", e);
-                }
-                logging::log(ctx, &log_text).await;
-            }
-            Punishment::Unmute => {
-                let member = ctx
-                    .http
-                    .get_member(guild_id, target.parse().unwrap())
-                    .await
-                    .expect("Error getting user");
-
-                if let Err(e) = member
-                    .remove_role(&ctx.http, get_id_from_env("ABB_MUTE_ROLE"))
-                    .await
-                {
-                    eprintln!("Error muting user: {}", e);
-                }
-
-                let log_text = format!("🤐 <@!{}> was unmuted by <@!{}>", target, author.id);
-
-                if let Err(e) = msg.channel_id.say(&ctx.http, &log_text).await {
-                    eprintln!("Error sending message: {}", e);
-                }
-                logging::log(ctx, &log_text).await;
-            }
-        };
+    if !common::confirm_admin(ctx, author, guild_id).await? {
+        return Ok(());
     }
+
+    let log_text = match punishment_type {
+        Punishment::Kick => {
+            guild_id
+                .kick(&ctx.http, UserId::new(target.parse()?))
+                .await?;
+
+            format!(
+                "👊 <@!{}> was kicked by <@!{}>:\n` ┗ Reason: {}`",
+                target, author.id, args
+            )
+        }
+        Punishment::Ban => {
+            guild_id
+                .ban(
+                    &ctx.http,
+                    UserId::new(target.parse()?),
+                    BAN_DELETE_DAYS,
+                )
+                .await?;
+
+            format!(
+                "🚫 <@!{}> was banned by <@!{}>:\n` ┗ Reason: {}`",
+                target, author.id, args
+            )
+        }
+        Punishment::Mute => {
+            member
+                .add_role(&ctx.http, get_id_from_env("ABB_MUTE_ROLE")?)
+                .await?;
+
+            format!(
+                "🤐 <@!{}> was muted by <@!{}>:\n` ┗ Reason: {}`",
+                target, author.id, args
+            )
+        }
+        Punishment::Unmute => {
+            member
+                .remove_role(&ctx.http, get_id_from_env("ABB_MUTE_ROLE")?)
+                .await?;
+
+            format!("🤐 <@!{}> was unmuted by <@!{}>", target, author.id)
+        }
+    };
+
+    msg.channel_id.say(&ctx.http, &log_text).await?;
+    logging::log(ctx, &log_text).await;
+
+    Ok(())
 }

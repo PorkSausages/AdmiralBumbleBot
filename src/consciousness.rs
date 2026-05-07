@@ -4,6 +4,7 @@ use {
         util::{get_id_from_env, random_string},
         CLEVERBOT_DELAY_SECONDS, CLEVERBOT_LIMIT,
     },
+    anyhow::Context as _,
     serenity::{model::channel::Message, prelude::Context},
     std::{
         collections::HashMap,
@@ -12,22 +13,23 @@ use {
     },
 };
 
-pub async fn consciousness(ctx: &Context, msg: &Message, pad: &Scratchpad) {
-    if msg.channel_id != get_id_from_env("ABB_BOT_CHANNEL")
+pub async fn consciousness(
+    ctx: &Context,
+    msg: &Message,
+    pad: &Scratchpad,
+) -> Result<(), anyhow::Error> {
+    if msg.channel_id != get_id_from_env("ABB_BOT_CHANNEL")?
         || !(msg
             .content
-            .starts_with(&format!("<@!{}>", get_id_from_env("ABB_BOT_USER_ID")))
+            .starts_with(&format!("<@!{}>", get_id_from_env("ABB_BOT_USER_ID")?))
             || msg
                 .content
-                .starts_with(&format!("<@{}>", get_id_from_env("ABB_BOT_USER_ID"))))
+                .starts_with(&format!("<@{}>", get_id_from_env("ABB_BOT_USER_ID")?)))
     {
-        return;
+        return Ok(());
     }
     let user_id = msg.author.id;
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_secs();
+    let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
     let mut block_info = pad.with(|pad| {
         pad.block_map
             .get(&user_id.get())
@@ -59,17 +61,19 @@ pub async fn consciousness(ctx: &Context, msg: &Message, pad: &Scratchpad) {
                 "turning your life around"
             ])
         );
-        msg.channel_id
-            .say(&ctx.http, response)
-            .await
-            .expect("Error sending message");
-        return;
+        msg.channel_id.say(&ctx.http, response).await?;
+        return Ok(());
     }
 
-    let content = msg.content.split_once('>').unwrap().1.trim();
-    let api_key = env::var("ABB_CLEVERBOT_API_KEY").expect("Missing API Key");
-    let state = env::var("ABB_CLEVERBOT_STATE").expect("Missing State");
-    let base_url = env::var("ABB_CLEVERBOT_URL").expect("Missing URL");
+    let content = msg
+        .content
+        .split_once('>')
+        .expect("This is guaranteed to exist as part of the bot mention")
+        .1
+        .trim();
+    let api_key = env::var("ABB_CLEVERBOT_API_KEY")?;
+    let state = env::var("ABB_CLEVERBOT_STATE")?;
+    let base_url = env::var("ABB_CLEVERBOT_URL")?;
     let client = reqwest::Client::new();
 
     let params = [
@@ -78,28 +82,19 @@ pub async fn consciousness(ctx: &Context, msg: &Message, pad: &Scratchpad) {
         ("cs", state),
     ];
 
-    let response = client
-        .get(&base_url)
-        .query(&params)
-        .send()
-        .await
-        .expect("Bad response from Cleverbot");
+    let response = client.get(&base_url).query(&params).send().await?;
 
     let response_message = format!(
         "<@{}> {}",
         msg.author.id,
         response
             .json::<HashMap<String, String>>()
-            .await
-            .expect("Can't parse response JSON")
+            .await?
             .get("output")
-            .expect("No output in Response")
+            .context("No output in Cleverbot JSON")?
     );
 
-    msg.channel_id
-        .say(&ctx.http, &response_message)
-        .await
-        .expect("Error sending message");
+    msg.channel_id.say(&ctx.http, &response_message).await?;
 
     pad.with_mut(|pad| {
         pad.block_map.insert(
@@ -109,5 +104,6 @@ pub async fn consciousness(ctx: &Context, msg: &Message, pad: &Scratchpad) {
                 streak_start_seconds: block_info.streak_start_seconds,
             },
         );
-    })
+    })?;
+    Ok(())
 }

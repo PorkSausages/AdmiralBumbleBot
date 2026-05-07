@@ -87,7 +87,7 @@ pub fn random_plugin_type() -> String {
     ])
 }
 
-pub fn channel2quip(channel: &Channel) -> String {
+pub fn channel2quip(channel: Channel) -> String {
     match channel {
         Channel::Bot => random_string(&[
             "harassing me",
@@ -105,7 +105,7 @@ pub fn channel2quip(channel: &Channel) -> String {
             ]),
             random_language()
         ),
-        Channel::DAW => format!(
+        Channel::Daw => format!(
             "{} {}",
             random_string(&["swearing by", "swearing against", "praising", "cursing out"]),
             random_daw()
@@ -165,7 +165,7 @@ pub fn channel2quip(channel: &Channel) -> String {
     }
 }
 
-pub fn fav_quip(channel: &Channel) -> String {
+pub fn fav_quip(channel: Channel) -> String {
     match channel {
         Channel::Bot => random_string(&[
             "they're not going to get admin.",
@@ -177,7 +177,7 @@ pub fn fav_quip(channel: &Channel) -> String {
             "why not just spell it with an 'm'?",
             "is this some sort of inside joke?",
         ]),
-        Channel::DAW => format!(
+        Channel::Daw => format!(
             "everyone knows that {} is the best DAW, anyway.",
             random_daw()
         ),
@@ -219,7 +219,7 @@ pub fn fav_quip(channel: &Channel) -> String {
     }
 }
 
-pub fn snd_quip(channel: &Channel) -> String {
+pub fn snd_quip(channel: Channel) -> String {
     match channel {
         Channel::Bot => random_string(&[
             "$giveAdmin never works, anyway.",
@@ -231,7 +231,7 @@ pub fn snd_quip(channel: &Channel) -> String {
             "nobody gets the joke anymore.",
             "we don't get that many newcomers anymore.",
         ]),
-        Channel::DAW => format!("{} won the DAW wars anyway.", random_daw()),
+        Channel::Daw => format!("{} won the DAW wars anyway.", random_daw()),
         Channel::Hardware => random_string(&[
             "who buys hardware in this economy?",
             "physical piracy is... more complicated.",
@@ -266,7 +266,7 @@ pub fn snd_quip(channel: &Channel) -> String {
     }
 }
 
-pub fn last_quip(channel: &Channel) -> String {
+pub fn last_quip(channel: Channel) -> String {
     match channel {
         Channel::Bot => random_string(&[
             "They might get admin this time!",
@@ -278,7 +278,7 @@ pub fn last_quip(channel: &Channel) -> String {
             "What's wrong with spreading a little hospitality?",
             "You gotta pay back that warm welcone.",
         ]),
-        Channel::DAW => format!(
+        Channel::Daw => format!(
             "Who can resist talking about the new {} update?",
             random_daw()
         ),

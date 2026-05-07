@@ -45,35 +45,44 @@ pub struct Scratchpad {
 }
 
 impl Scratchpad {
-    pub fn new() -> Self {
-        let f = File::open("scratchpad.json").expect("Error opening scratchpad");
-        Self {
-            data: Arc::new(Mutex::new(
-                from_reader(f).expect("Error opening scratchpad"),
-            )),
+    pub fn new(reset: bool) -> Result<Self, anyhow::Error> {
+        if !reset {
+            let f = File::open("scratchpad.json")?;
+            Ok(Self {
+                data: Arc::new(Mutex::new(from_reader(f)?)),
+            })
+        } else {
+            Ok(Self {
+                data: (Arc::new(Mutex::new(ScratchpadModel::default()))),
+            })
         }
-        // Self { data: (Arc::new(Mutex::new(ScratchpadModel::default()))) }
     }
     pub fn with<F, R>(&self, f: F) -> R
     where
         F: FnOnce(&ScratchpadModel) -> R,
     {
-        f(&self.data.lock().unwrap())
+        f(&self
+            .data
+            .lock()
+            .expect("Scratchpad mutex should not be poisoned")) //should be more rigorous but overkill considering what we use it for
     }
 
-    pub fn with_mut<F, R>(&self, f: F) -> R
+    pub fn with_mut<F, R>(&self, f: F) -> Result<R, anyhow::Error>
     where
         F: FnOnce(&mut ScratchpadModel) -> R,
     {
-        let mut guard = self.data.lock().unwrap();
+        let mut guard = self
+            .data
+            .lock()
+            .expect("Scratchpad mutex should not be poisoned");
         let mut copy = guard.clone();
         let res = f(&mut copy);
-        let f = File::create("scratchpad.temp").expect("Error opening temp scratchpad for write");
+        let f = File::create("scratchpad.temp")?;
         let writer = BufWriter::new(f);
-        to_writer_pretty(writer, &copy).expect("Error writing to temp scratchpad");
-        rename("scratchpad.temp", "scratchpad.json").expect("Error swapping scratchpads");
+        to_writer_pretty(writer, &copy)?;
+        rename("scratchpad.temp", "scratchpad.json")?;
         *guard = copy;
-        res
+        Ok(res)
     }
 }
 

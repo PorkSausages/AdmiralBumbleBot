@@ -1,39 +1,36 @@
 use std::env;
 
+use anyhow::{anyhow, bail};
 use rand::{seq::SliceRandom, Rng};
 
-pub fn get_id_from_env(key: &str) -> u64 {
-    env::var(key)
-        .unwrap_or_else(|_| panic!("{}", format!("Error getting {} from env", key).to_string()))
-        .parse()
-        .unwrap_or_else(|_| panic!("{}", format!("Error parsing {} from env", key).to_string()))
+pub fn get_id_from_env(key: &str) -> Result<u64, anyhow::Error> {
+    Ok(env::var(key)?.parse::<u64>()?)
 }
 
 pub fn random_string(strings: &[&str]) -> String {
-    strings.choose(&mut rand::thread_rng()).unwrap().to_string()
+    strings
+        .choose(&mut rand::thread_rng())
+        .expect("Passed array of static strings should always have atleast 1 member")
+        .to_string()
 }
 
-pub fn roll_dice(notation: &str) -> Result<u32, String> {
+pub fn roll_dice(notation: &str) -> Result<u32, anyhow::Error> {
     let s = notation.to_lowercase();
 
     let (count_str, sides_str) = s
         .split_once('d')
-        .ok_or_else(|| "Invalid format: missing 'd'".to_string())?;
+        .ok_or_else(|| anyhow!("Can't split string"))?;
 
     let count: u32 = if count_str.is_empty() {
         1
     } else {
-        count_str
-            .parse()
-            .map_err(|_| "Invalid number of dice".to_string())?
+        count_str.parse()?
     };
 
-    let sides: u32 = sides_str
-        .parse()
-        .map_err(|_| "Invalid number of sides".to_string())?;
+    let sides: u32 = sides_str.parse()?;
 
     if sides == 0 {
-        return Err("Dice cannot have 0 sides".to_string());
+        bail!("No sides");
     }
 
     let mut rng = rand::thread_rng();
@@ -44,21 +41,6 @@ pub fn roll_dice(notation: &str) -> Result<u32, String> {
     }
 
     Ok(total)
-}
-
-#[derive(Eq, Hash, PartialEq, Clone, Copy)]
-pub enum Channel {
-    General,
-    DAW,
-    Hardware,
-    Plugins,
-    Deals,
-    Photography,
-    Code,
-    PluginDev,
-    Shitposting,
-    Food,
-    Bot,
 }
 
 #[derive(Clone, Copy, PartialEq, PartialOrd)]
@@ -78,10 +60,25 @@ pub fn get_absolute_amount(value: usize, big_bound: usize, mid_bound: usize) -> 
     }
 }
 
-pub fn id2channel(id: u64) -> Option<Channel> {
+#[derive(Eq, Hash, PartialEq, Clone, Copy)]
+pub enum Channel {
+    General,
+    Daw,
+    Hardware,
+    Plugins,
+    Deals,
+    Photography,
+    Code,
+    PluginDev,
+    Shitposting,
+    Food,
+    Bot,
+}
+
+pub fn id2channel(id: u64) -> Result<Option<Channel>, anyhow::Error> {
     for (chan_key, chan) in [
         ("ABB_GENERAL", Channel::General),
-        ("ABB_DAW", Channel::DAW),
+        ("ABB_DAW", Channel::Daw),
         ("ABB_WARE", Channel::Hardware),
         ("ABB_PLUG", Channel::Plugins),
         ("ABB_DEAL", Channel::Deals),
@@ -92,18 +89,18 @@ pub fn id2channel(id: u64) -> Option<Channel> {
         ("ABB_FOOD", Channel::Food),
         ("ABB_BOT", Channel::Bot),
     ] {
-        if get_id_from_env(chan_key) == id {
-            return Some(chan);
+        if get_id_from_env(chan_key)? == id {
+            return Ok(Some(chan));
         }
     }
-    None
+    Ok(None)
 }
 
-pub fn channel2name(channel: &Channel) -> &str {
+pub fn channel2name(channel: Channel) -> &'static str {
     match channel {
         Channel::Bot => "bot",
         Channel::Code => "code",
-        Channel::DAW => "DAW",
+        Channel::Daw => "DAW",
         Channel::Deals => "deals",
         Channel::Food => "food",
         Channel::General => "general",

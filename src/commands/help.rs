@@ -4,7 +4,7 @@ use serenity::{
     prelude::Context,
 };
 
-pub async fn help(ctx: &Context, msg: &Message) {
+pub async fn help(ctx: &Context, msg: &Message) -> Result<(), anyhow::Error> {
     let message = CreateMessage::new().add_embed(
         CreateEmbed::new()
             .title("Help - Command List")
@@ -65,7 +65,6 @@ pub async fn help(ctx: &Context, msg: &Message) {
             ]),
     );
 
-    if let Err(e) = msg.channel_id.send_message(&ctx.http, message).await {
-        eprintln!("Error displaying help: {}", e);
-    }
+    msg.channel_id.send_message(&ctx.http, message).await?;
+    Ok(())
 }
