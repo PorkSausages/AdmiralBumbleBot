@@ -55,11 +55,7 @@ impl EventHandler for Handler {
         user: User,
         _member_data_if_available: Option<Member>,
     ) {
-        logging::log(
-            &ctx,
-            &format!("📤 User left: <@!{}>`", user.id.get()),
-        )
-        .await;
+        logging::log(&ctx, &format!("📤 User left: <@!{}>`", user.id.get())).await;
     }
 
     async fn message(&self, ctx: Context, msg: Message) {
@@ -100,7 +96,8 @@ impl EventHandler for Handler {
             word_count,
             timestamp,
             &self.db,
-        ).expect("Activity should be logged");
+        )
+        .expect("Activity should be logged");
     }
 
     async fn message_delete(
@@ -124,7 +121,7 @@ impl EventHandler for Handler {
                 author_id.get(),
                 channel_id,
                 stripped_message
-            )
+            ),
         )
         .await;
     }

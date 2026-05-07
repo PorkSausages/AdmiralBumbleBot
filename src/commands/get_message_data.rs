@@ -129,67 +129,59 @@ pub async fn get_message_data(
         &format!("It's not looking good for **{}**. ", username),
         &format!("We need to address the **{}** situation. ", username),
     ]));
-    response.push_str(
-        &format!(
-            "{} with {} innocent word{} in {} channel... then it {} from there. ",
-            random_string(&["It all started", "It began", "The story starts"]),
-            first.words,
-            if first.words != 1 { "s" } else { "" },
-            match id2channel(first.channel) {
-                Ok(Some(channel)) => format!("the {}", channel2name(channel)),
-                _ => String::from_str("some random")?, //this needs to be a String instead of a &str?
-            },
-            random_string(&["went south", "quickly spiraled", "rapidly deteriorated"])
-        )
-    );
+    response.push_str(&format!(
+        "{} with {} innocent word{} in {} channel... then it {} from there. ",
+        random_string(&["It all started", "It began", "The story starts"]),
+        first.words,
+        if first.words != 1 { "s" } else { "" },
+        match id2channel(first.channel) {
+            Ok(Some(channel)) => format!("the {}", channel2name(channel)),
+            _ => String::from_str("some random")?, //this needs to be a String instead of a &str?
+        },
+        random_string(&["went south", "quickly spiraled", "rapidly deteriorated"])
+    ));
     if (delta.as_secs() / LONG_TIME) > 0 {
-        response.push_str(
-            &format!(
-                "{} - {}.",
-                random_string(&[
-                    "Sadly, it may already be too late",
-                    "At this point, there's no turning back",
-                    "I fear the brain damage may be terminal"
-                ]),
-                random_string(&[
-                    "god help their soul",
-                    "it's never been so over",
-                    "it's truly bleak"
-                ])
-            )
-        );
+        response.push_str(&format!(
+            "{} - {}.",
+            random_string(&[
+                "Sadly, it may already be too late",
+                "At this point, there's no turning back",
+                "I fear the brain damage may be terminal"
+            ]),
+            random_string(&[
+                "god help their soul",
+                "it's never been so over",
+                "it's truly bleak"
+            ])
+        ));
     } else if (delta.as_secs() / MID_TIME) > 0 {
-        response.push_str(
-            &format!(
-                "{} - {}.",
-                random_string(&[
-                    "It's not too late, though",
-                    "They can still turn it back",
-                    "They can still be saved"
-                ]),
-                random_string(&[
-                    "but it's getting harder every second",
-                    "but time's running out",
-                    "if they turn back now"
-                ])
-            )
-        );
+        response.push_str(&format!(
+            "{} - {}.",
+            random_string(&[
+                "It's not too late, though",
+                "They can still turn it back",
+                "They can still be saved"
+            ]),
+            random_string(&[
+                "but it's getting harder every second",
+                "but time's running out",
+                "if they turn back now"
+            ])
+        ));
     } else {
-        response.push_str(
-            &format!(
-                "{} - {}.",
-                random_string(&[
-                    "They're still in the early stages, though",
-                    "It's still early for them",
-                    "They're safe, for now"
-                ]),
-                random_string(&[
-                    "but it'll turn sour, quick",
-                    "they can still leave before it's too late",
-                    "they can still fix this"
-                ])
-            )
-        );
+        response.push_str(&format!(
+            "{} - {}.",
+            random_string(&[
+                "They're still in the early stages, though",
+                "It's still early for them",
+                "They're safe, for now"
+            ]),
+            random_string(&[
+                "but it'll turn sour, quick",
+                "they can still leave before it's too late",
+                "they can still fix this"
+            ])
+        ));
     }
 
     response.push_str("\n\n");
@@ -444,19 +436,17 @@ pub async fn get_message_data(
 
     response.push_str("# **Ranked Activity:**\n");
     for (idx, (channel, bucket)) in sorted_buckets.iter().enumerate() {
-        response.push_str(
-            &format!(
-                "**{}.** {} in the **{}** channel (yapping level: {})\n",
-                idx+1,
-                channel2quip(*channel),
-                channel2name(*channel),
-                match get_word_amount(bucket) {
-                    AbsoluteAmount::Small => random_string(&["low", "tiny", "minimal"]),
-                    AbsoluteAmount::Medium => random_string(&["medium", "fair", "acceptable"]),
-                    AbsoluteAmount::Big => random_string(&["huge", "unacceptable", "troubling"]),
-                }
-            )
-        );
+        response.push_str(&format!(
+            "**{}.** {} in the **{}** channel (yapping level: {})\n",
+            idx + 1,
+            channel2quip(*channel),
+            channel2name(*channel),
+            match get_word_amount(bucket) {
+                AbsoluteAmount::Small => random_string(&["low", "tiny", "minimal"]),
+                AbsoluteAmount::Medium => random_string(&["medium", "fair", "acceptable"]),
+                AbsoluteAmount::Big => random_string(&["huge", "unacceptable", "troubling"]),
+            }
+        ));
     }
 
     response.push_str(&format!("\n-# Took {:.2?}", now.elapsed()?));

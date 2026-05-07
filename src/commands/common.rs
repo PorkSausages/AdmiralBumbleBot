@@ -35,7 +35,11 @@ pub fn in_bot_channel(msg: &Message) -> Result<bool, anyhow::Error> {
     Ok(false)
 }
 
-pub async fn has_wuss_role(ctx: &Context, user: &User, guild: GuildId) -> Result<bool, anyhow::Error> {
+pub async fn has_wuss_role(
+    ctx: &Context,
+    user: &User,
+    guild: GuildId,
+) -> Result<bool, anyhow::Error> {
     Ok(user
         .has_role(
             &ctx.http,

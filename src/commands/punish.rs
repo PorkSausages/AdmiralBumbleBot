@@ -1,9 +1,6 @@
 use {
     super::common,
-    crate::{
-        logging,
-        util::{get_id_from_env},
-    },
+    crate::{logging, util::get_id_from_env},
     serenity::{
         model::{channel::Message, id::UserId},
         prelude::Context,
@@ -55,11 +52,7 @@ pub async fn punish(
         }
         Punishment::Ban => {
             guild_id
-                .ban(
-                    &ctx.http,
-                    UserId::new(target.parse()?),
-                    BAN_DELETE_DAYS,
-                )
+                .ban(&ctx.http, UserId::new(target.parse()?), BAN_DELETE_DAYS)
                 .await?;
 
             format!(

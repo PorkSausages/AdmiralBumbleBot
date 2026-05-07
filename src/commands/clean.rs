@@ -37,8 +37,11 @@ pub async fn clean(ctx: &Context, msg: &Message, args: &str) -> Result<(), anyho
         let stripped_message = messages[i].content.clone().replace("`", "");
         let author = messages[i].author.clone();
 
-        log_text
-            .push_str(&format!("` ┣ `<@!{}>`: {}`\n", author.id.get(), stripped_message))
+        log_text.push_str(&format!(
+            "` ┣ `<@!{}>`: {}`\n",
+            author.id.get(),
+            stripped_message
+        ))
     }
 
     let last_message = messages
@@ -47,7 +50,11 @@ pub async fn clean(ctx: &Context, msg: &Message, args: &str) -> Result<(), anyho
     let stripped_message = last_message.content.replace("`", "");
     let author = last_message.author;
 
-    log_text.push_str(&format!("` ┗ `<@!{}>`: {}`", author.id.get(), stripped_message));
+    log_text.push_str(&format!(
+        "` ┗ `<@!{}>`: {}`",
+        author.id.get(),
+        stripped_message
+    ));
 
     logging::log(ctx, &log_text).await;
     Ok(())

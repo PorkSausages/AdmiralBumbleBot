@@ -91,7 +91,13 @@ pub async fn set_pasta(
     pad: &Scratchpad,
     args: &str,
 ) -> Result<(), anyhow::Error> {
-    if !confirm_admin(ctx, &msg.author, msg.guild_id.expect("BumbleBot does not support DMs")).await? {
+    if !confirm_admin(
+        ctx,
+        &msg.author,
+        msg.guild_id.expect("BumbleBot does not support DMs"),
+    )
+    .await?
+    {
         return Ok(());
     }
 

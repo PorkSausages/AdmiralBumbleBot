@@ -39,10 +39,7 @@ pub async fn pass_jenkem(
                 &ctx.http,
                 format!(
                     "{} is allergic to jenkem!",
-                    recipient
-                        .to_user(&ctx.http)
-                        .await?
-                        .name
+                    recipient.to_user(&ctx.http).await?.name
                 ),
             )
             .await?;

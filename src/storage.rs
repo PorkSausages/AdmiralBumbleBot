@@ -2,12 +2,17 @@ use redb::{Database, ReadableDatabase, ReadableTable};
 
 use crate::storage_models::{JenkemModel, MessageModel, Scratchpad, TABLE_HISTORY};
 
-pub fn log_activity(user_id: u64, channel_id: u64, word_count: u16, timestamp: u64, db: &Database) -> Result<(), anyhow::Error> {
+pub fn log_activity(
+    user_id: u64,
+    channel_id: u64,
+    word_count: u16,
+    timestamp: u64,
+    db: &Database,
+) -> Result<(), anyhow::Error> {
     let write_txn = db.begin_write()?;
     {
-        let mut table = write_txn
-            .open_table(TABLE_HISTORY)?;
-        let mut data = match table.get(user_id)?{
+        let mut table = write_txn.open_table(TABLE_HISTORY)?;
+        let mut data = match table.get(user_id)? {
             Some(access) => bincode::deserialize(access.value())?,
             None => Vec::new(),
         };
@@ -17,17 +22,18 @@ pub fn log_activity(user_id: u64, channel_id: u64, word_count: u16, timestamp: u
             words: word_count,
         });
         let bytes = bincode::serialize(&data)?;
-        table
-            .insert(user_id, bytes.as_slice())?;
+        table.insert(user_id, bytes.as_slice())?;
     };
     write_txn.commit()?;
     Ok(())
 }
 
-pub fn get_user_message_data(user_id: u64, db: &Database) -> Result<Vec<MessageModel>, anyhow::Error> {
+pub fn get_user_message_data(
+    user_id: u64,
+    db: &Database,
+) -> Result<Vec<MessageModel>, anyhow::Error> {
     let read_txn = db.begin_read()?;
-    let table = read_txn
-        .open_table(TABLE_HISTORY)?;
+    let table = read_txn.open_table(TABLE_HISTORY)?;
     match table.get(user_id)? {
         Some(access) => Ok(bincode::deserialize(access.value()).unwrap_or_default()),
         None => Ok(Vec::new()),
