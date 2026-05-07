@@ -10,7 +10,7 @@ pub async fn check_pasta(
     msg: &Message,
     pad: &Scratchpad,
 ) -> Result<(), anyhow::Error> {
-    if msg.channel_id == get_id_from_env("ABB_SHITPOST_CHANNEL")? //"attempt to reduce copypasta spam"
+    if msg.channel_id == get_id_from_env("ABB_SHIT")? //"attempt to reduce copypasta spam"
         || msg.author.id == get_id_from_env("ABB_BOT_USER_ID")?
     {
         return Ok(());

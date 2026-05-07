@@ -18,7 +18,7 @@ pub async fn consciousness(
     msg: &Message,
     pad: &Scratchpad,
 ) -> Result<(), anyhow::Error> {
-    if msg.channel_id != get_id_from_env("ABB_BOT_CHANNEL")?
+    if msg.channel_id != get_id_from_env("ABB_BOT")?
         || !(msg
             .content
             .starts_with(&format!("<@!{}>", get_id_from_env("ABB_BOT_USER_ID")?))

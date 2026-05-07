@@ -27,7 +27,7 @@ pub async fn confirm_admin(
 }
 
 pub fn in_bot_channel(msg: &Message) -> Result<bool, anyhow::Error> {
-    if msg.channel_id.get() == get_id_from_env("ABB_BOT_CHANNEL")?
+    if msg.channel_id.get() == get_id_from_env("ABB_BOT")?
         || msg.channel_id.get() == get_id_from_env("ABB_BOT_TEST_CHANNEL")?
     {
         return Ok(true);
