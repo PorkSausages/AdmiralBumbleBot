@@ -1,14 +1,12 @@
 use serenity::{model::channel::Message, prelude::Context};
 
-pub async fn kick(ctx: &Context, msg: &Message) {
-    msg.channel_id
-        .say(&ctx.http, "Begone!")
-        .await
-        .expect("Error sending message");
+pub async fn kick(ctx: &Context, msg: &Message) -> Result<(), anyhow::Error> {
+    msg.channel_id.say(&ctx.http, "Begone!").await?;
 
     msg.guild_id
-        .unwrap()
+        .expect("BumbleBot does not support DMs")
         .kick(&ctx.http, &msg.author)
-        .await
-        .expect("Error kicking user");
+        .await?;
+
+    Ok(())
 }

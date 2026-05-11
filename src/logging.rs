@@ -7,11 +7,11 @@ use serenity::{
 use crate::util::get_id_from_env;
 
 pub async fn log(ctx: &Context, message: &str) {
-    let message = CreateMessage::new()
+    let dis_message = CreateMessage::new()
         .content(message)
         .allowed_mentions(CreateAllowedMentions::new().empty_users());
-    ChannelId::new(get_id_from_env("ABB_LOG_CHANNEL"))
-        .send_message(&ctx.http, message)
+    ChannelId::new(get_id_from_env("ABB_LOG_CHANNEL").expect("Log Channel should be set"))
+        .send_message(&ctx.http, dis_message)
         .await
-        .expect("Error logging message.");
+        .unwrap_or_else(|_| panic!("Error logging this message: {}", message));
 }

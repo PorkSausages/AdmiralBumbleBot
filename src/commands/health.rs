@@ -1,7 +1,6 @@
 use serenity::{model::channel::Message, prelude::Context};
 
-pub async fn health(ctx: &Context, msg: &Message) {
-    if let Err(e) = msg.channel_id.say(&ctx.http, "bad").await {
-        eprintln!("Error displaying help: {}", e);
-    }
+pub async fn health(ctx: &Context, msg: &Message) -> Result<(), anyhow::Error> {
+    msg.channel_id.say(&ctx.http, "bad").await?;
+    Ok(())
 }

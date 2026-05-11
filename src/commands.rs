@@ -1,18 +1,17 @@
 use crate::{
-    storage_models::DatabaseLayer,
+    storage_models::Scratchpad,
     util::{get_id_from_env, roll_dice},
 };
+use redb::Database;
 use serenity::model::id::RoleId;
 
 use {
-    super::pastas,
     crate::consciousness,
     regex::Regex,
     serenity::{
         model::{channel::Message, channel::ReactionType, id::EmojiId},
-        prelude::{Context, RwLock},
+        prelude::Context,
     },
-    std::{collections::HashMap, sync::Arc},
 };
 
 mod announcement;
@@ -21,10 +20,12 @@ mod buzz;
 mod clean;
 mod common;
 mod get_message_data;
+pub mod get_message_quips;
 mod give_admin;
 mod health;
 mod help;
 mod jenkem;
+mod pasta;
 mod punish;
 mod roll;
 mod slap;
@@ -32,45 +33,42 @@ mod slap;
 pub async fn execute(
     ctx: &Context,
     msg: &Message,
-    db: &DatabaseLayer,
-    ignore_list: Arc<RwLock<HashMap<u64, u8>>>,
-) {
-    sonic(ctx, msg).await;
-    pastas::copypastas(ctx, msg).await;
-    consciousness::consciousness(ctx, msg, ignore_list).await;
-
-    if !msg.content.starts_with('$') {
-        return;
+    db: &Database,
+    pad: &Scratchpad,
+) -> Result<(), anyhow::Error> {
+    if msg.author.id == get_id_from_env("ABB_BOT_USER_ID")? {
+        return Ok(());
     }
 
-    let guild_id = msg.guild_id.expect("Error getting guild ID");
-    let is_booster = match msg
+    sonic(ctx, msg).await?;
+    pasta::check_pasta(ctx, msg, pad).await?;
+    consciousness::consciousness(ctx, msg, pad).await?;
+
+    if !msg.content.starts_with('$') {
+        return Ok(());
+    }
+
+    let guild_id = msg.guild_id.expect("BumbleBot does not support DMs");
+    let is_booster = msg
         .author
         .has_role(
             &ctx.http,
             guild_id,
-            RoleId::new(get_id_from_env("ABB_BOOSTER_ROLE")),
+            RoleId::new(get_id_from_env("ABB_BOOSTER_ROLE")?),
         )
-        .await
-    {
-        Ok(b) => b,
-        Err(e) => {
-            eprintln!("Error: {}", e);
-            false
-        }
-    };
+        .await?;
 
-    let (command, target, args) = match parse_command(msg.content.as_str()) {
+    let (command, target, args) = match parse_command(&msg.content)? {
         Some(result) => result,
-        None => return,
+        None => return Ok(()),
     };
 
-    if roll_dice("1d20").unwrap() == 20
-        && msg.channel_id.get() != get_id_from_env("ABB_BOT_TEST_CHANNEL")
+    if roll_dice("1d20")? == 20
+        && msg.channel_id.get() != get_id_from_env("ABB_BOT_TEST_CHANNEL")?
         && !is_booster
     {
-        bee_sting::bee_sting(ctx, msg).await;
-        return;
+        bee_sting::bee_sting(ctx, msg, pad).await?;
+        return Ok(());
     }
 
     match command.as_str() {
@@ -81,34 +79,37 @@ pub async fn execute(
         "$mute" => punish::punish(ctx, msg, &target, &args, &punish::Punishment::Mute).await,
         "$unmute" => punish::punish(ctx, msg, &target, &args, &punish::Punishment::Unmute).await,
         "$announcement" => announcement::announcement(ctx, msg).await,
-        "$giveAdmin" => give_admin::give_admin(ctx, msg, db).await,
+        "$giveAdmin" => give_admin::give_admin(ctx, msg, pad).await,
         "$clean" => clean::clean(ctx, msg, &args).await,
         "$getMessageData" => get_message_data::get_message_data(ctx, msg, &target, db).await,
         "$slap" => slap::slap(ctx, msg, &target, &args).await,
-        "$passJenkem" => jenkem::pass_jenkem(ctx, msg, &target, db).await,
-        "$brewJenkem" => jenkem::brew_jenkem(ctx, msg, db).await,
-        "$rejectJenkem" => jenkem::reject_jenkem(ctx, msg, db).await,
-        "$locateJenkem" => jenkem::locate_jenkem(ctx, msg, db).await,
-        "$jenkemStreak" => jenkem::jenkem_streak(ctx, msg, db).await,
+        "$passJenkem" => jenkem::pass_jenkem(ctx, msg, &target, pad).await,
+        "$brewJenkem" => jenkem::brew_jenkem(ctx, msg, pad).await,
+        "$rejectJenkem" => jenkem::reject_jenkem(ctx, msg, pad).await,
+        "$locateJenkem" => jenkem::locate_jenkem(ctx, msg, pad).await,
+        "$jenkemStreak" => jenkem::jenkem_streak(ctx, msg, pad).await,
         "$roll" => roll::roll(ctx, msg, &args).await,
         "$beeHealthStatus" => health::health(ctx, msg).await,
-        _ => {}
-    };
+        "$getPasta" => pasta::get_pasta(ctx, msg, pad, &args).await,
+        "$setPasta" => pasta::set_pasta(ctx, msg, pad, &args).await,
+        "$delPasta" => pasta::del_pasta(ctx, msg, pad, &args).await,
+        _ => Ok(()),
+    }
 }
 
-fn parse_command(text: &str) -> Option<(String, String, String)> {
+fn parse_command(text: &str) -> Result<Option<(String, String, String)>, anyhow::Error> {
     let regexes = vec![
-        Regex::new(r"(?P<command>^\$\w+) <@!(?P<target>\d+)> (?P<args>.*)").unwrap(),
-        Regex::new(r"(?P<command>^\$\w+) <@!(?P<target>\d+)>").unwrap(),
-        Regex::new(r"(?P<command>^\$\w+) <@(?P<target>\d+)> (?P<args>.*)").unwrap(),
-        Regex::new(r"(?P<command>^\$\w+) <@(?P<target>\d+)>").unwrap(),
-        Regex::new(r"(?P<command>^\$\w+) (?P<args>.*)").unwrap(),
-        Regex::new(r"(?P<command>^\$\w+)").unwrap(),
+        Regex::new(r"(?P<command>^\$\w+) <@!(?P<target>\d+)> (?P<args>.*)")?,
+        Regex::new(r"(?P<command>^\$\w+) <@!(?P<target>\d+)>")?,
+        Regex::new(r"(?P<command>^\$\w+) <@(?P<target>\d+)> (?P<args>.*)")?,
+        Regex::new(r"(?P<command>^\$\w+) <@(?P<target>\d+)>")?,
+        Regex::new(r"(?P<command>^\$\w+) (?P<args>.*)")?,
+        Regex::new(r"(?P<command>^\$\w+)")?,
     ];
 
     for re in regexes {
         if re.is_match(text) {
-            let caps = re.captures(text).unwrap();
+            let caps = re.captures(text).expect("Checked for match");
 
             let command = match caps.name("command") {
                 Some(command) => String::from(command.as_str()),
@@ -125,26 +126,26 @@ fn parse_command(text: &str) -> Option<(String, String, String)> {
                 None => String::new(),
             };
 
-            return Some((command, target, args));
+            return Ok(Some((command, target, args)));
         }
     }
 
-    None
+    Ok(None)
 }
 
-async fn sonic(ctx: &Context, msg: &Message) {
+async fn sonic(ctx: &Context, msg: &Message) -> Result<(), anyhow::Error> {
     if msg.content.to_ascii_lowercase().contains("sonic")
         || msg.content.to_ascii_lowercase().contains("sanic")
     {
         msg.react(
             &ctx.http,
             ReactionType::Custom {
-                id: EmojiId::new(get_id_from_env("ABB_SONIC_EMOTE")),
+                id: EmojiId::new(get_id_from_env("ABB_SONIC_EMOTE")?),
                 animated: false,
                 name: Some(String::from("sonic-1")),
             },
         )
-        .await
-        .expect("⚠ Sonic not added 🦔☹ ⚠");
+        .await?;
     }
+    Ok(())
 }

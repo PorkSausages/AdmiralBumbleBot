@@ -1,154 +1,162 @@
 use {
-    crate::{commands::bee_sting, storage, storage_models::DatabaseLayer, util::get_id_from_env},
+    crate::{commands::bee_sting, storage, storage_models::Scratchpad, util::get_id_from_env},
     serenity::{
         model::{channel::Message, id::UserId},
         prelude::Context,
     },
 };
 
-pub async fn pass_jenkem(ctx: &Context, msg: &Message, target: &str, db: &DatabaseLayer) {
+pub async fn pass_jenkem(
+    ctx: &Context,
+    msg: &Message,
+    target: &str,
+    pad: &Scratchpad,
+) -> Result<(), anyhow::Error> {
     let author = &msg.author;
     let recipient = match target.parse() {
         Ok(id) => UserId::new(id),
         Err(_) => {
             msg.channel_id
                 .say(&ctx.http, "Please specify a victim.")
-                .await
-                .expect("Error sending message");
-            return;
+                .await?;
+            return Ok(());
         }
     };
 
     let allergic = [
-        get_id_from_env("ABB_CONNER_ID"),
-        get_id_from_env("ABB_WRL_ID"),
+        get_id_from_env("ABB_CONNER_ID")?,
+        get_id_from_env("ABB_WRL_ID")?,
     ];
     let is_allergic = allergic.contains(&recipient.get());
 
-    if jenkem_possession_check(ctx, msg, author.id.get(), db).await && author.id != recipient {
-        if is_allergic {
-            msg.channel_id
-                .say(
-                    &ctx.http,
-                    format!(
-                        "{} is allergic to jenkem!",
-                        recipient
-                            .to_user(&ctx.http)
-                            .await
-                            .expect("Error getting username")
-                            .name
-                    ),
-                )
-                .await
-                .expect("Error sending message");
+    if !(jenkem_possession_check(ctx, msg, author.id.get(), pad).await? && author.id != recipient) {
+        return Ok(());
+    }
 
-            bee_sting::bee_sting(ctx, msg).await;
-            return;
-        }
-
-        let huff_count = storage::pass_jenkem(recipient.get(), db);
-        storage::update_jenkem_streak(huff_count, db);
-
+    if is_allergic {
         msg.channel_id
             .say(
                 &ctx.http,
                 format!(
-                    "{} passed the jenkem to {}! The jenkem has been huffed {} time(s).",
-                    author.name,
-                    recipient
-                        .to_user(&ctx.http)
-                        .await
-                        .expect("Error getting recipient")
-                        .name,
-                    huff_count
+                    "{} is allergic to jenkem!",
+                    recipient.to_user(&ctx.http).await?.name
                 ),
             )
-            .await
-            .expect("Error sending message");
+            .await?;
+
+        bee_sting::bee_sting(ctx, msg, pad).await?;
+        return Ok(());
     }
+
+    let huff_count = storage::pass_jenkem(recipient.get(), pad)?;
+    storage::update_jenkem_streak(huff_count, pad)?;
+
+    msg.channel_id
+        .say(
+            &ctx.http,
+            format!(
+                "{} passed the jenkem to {}! The jenkem has been huffed {} time(s).",
+                author.name,
+                recipient.to_user(&ctx.http).await?.name,
+                huff_count
+            ),
+        )
+        .await?;
+
+    Ok(())
 }
 
-pub async fn brew_jenkem(ctx: &Context, msg: &Message, db: &DatabaseLayer) {
+pub async fn brew_jenkem(
+    ctx: &Context,
+    msg: &Message,
+    pad: &Scratchpad,
+) -> Result<(), anyhow::Error> {
     let author_name = &msg.author.name;
     let author_id = msg.author.id.get();
-    storage::init_jenkem(author_id, db);
+    storage::init_jenkem(author_id, pad)?;
 
     msg.channel_id
         .say(
             &ctx.http,
             format!("{} brewed a new batch of jenkem!", author_name),
         )
-        .await
-        .expect("Error sending message");
+        .await?;
+
+    Ok(())
 }
 
-pub async fn locate_jenkem(ctx: &Context, msg: &Message, db: &DatabaseLayer) {
-    let jenkem_holder = storage::locate_jenkem(db);
-
+pub async fn locate_jenkem(
+    ctx: &Context,
+    msg: &Message,
+    pad: &Scratchpad,
+) -> Result<(), anyhow::Error> {
+    let jenkem_holder = storage::locate_jenkem(pad);
     if jenkem_holder == 0 {
         msg.channel_id
             .say(
                 &ctx.http,
                 "Oh no, I've lost the jenkem! You'd better brew some more...",
             )
-            .await
-            .expect("Error sending message");
+            .await?
     } else {
-        let jenkem_holder = UserId::new(jenkem_holder)
-            .to_user(&ctx.http)
-            .await
-            .expect("Error getting jenkem holder");
+        let jenkem_holder = UserId::new(jenkem_holder).to_user(&ctx.http).await?;
 
         msg.channel_id
             .say(&ctx.http, format!("{} has the jenkem!", jenkem_holder.name))
-            .await
-            .expect("Error sending message");
-    }
+            .await?
+    };
+
+    Ok(())
 }
 
-pub async fn reject_jenkem(ctx: &Context, msg: &Message, db: &DatabaseLayer) {
+pub async fn reject_jenkem(
+    ctx: &Context,
+    msg: &Message,
+    pad: &Scratchpad,
+) -> Result<(), anyhow::Error> {
     let message: &str;
 
-    if jenkem_possession_check(ctx, msg, msg.author.id.get(), db).await {
-        message = match storage::reject_jenkem(db) {
+    if jenkem_possession_check(ctx, msg, msg.author.id.get(), pad).await? {
+        message = match storage::reject_jenkem(pad)? {
             Ok(()) => "The jenkem has been returned!",
             Err(()) => "Can't return the jenkem! You'll have to pass it...",
         };
 
-        msg.channel_id
-            .say(&ctx.http, message)
-            .await
-            .expect("Error rejecting jenkem");
-    }
+        msg.channel_id.say(&ctx.http, message).await?;
+    };
+    Ok(())
 }
 
-pub async fn jenkem_streak(ctx: &Context, msg: &Message, db: &DatabaseLayer) {
-    let streak = storage::get_jenkem_streak(db);
+pub async fn jenkem_streak(
+    ctx: &Context,
+    msg: &Message,
+    pad: &Scratchpad,
+) -> Result<(), anyhow::Error> {
+    let streak = storage::get_jenkem_streak(pad);
 
     msg.channel_id
         .say(
             &ctx.http,
             format!("The highest jenkem streak is {}!", streak),
         )
-        .await
-        .expect("Error sending message");
+        .await?;
+    Ok(())
 }
 
 async fn jenkem_possession_check(
     ctx: &Context,
     msg: &Message,
     author_id: u64,
-    db: &DatabaseLayer,
-) -> bool {
-    let current_holder = storage::locate_jenkem(db);
+    pad: &Scratchpad,
+) -> Result<bool, anyhow::Error> {
+    let current_holder = storage::locate_jenkem(pad);
 
     if current_holder != author_id {
         msg.channel_id
             .say(&ctx.http, "You do not have the jenkem!")
-            .await
-            .expect("Error sending message");
-        return false;
+            .await?;
+        return Ok(false);
     }
 
-    true
+    Ok(true)
 }

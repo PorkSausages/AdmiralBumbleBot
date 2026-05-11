@@ -2,25 +2,17 @@ use serenity::{model::channel::Message, prelude::Context};
 
 use crate::util::get_id_from_env;
 
-pub async fn mute(ctx: &Context, msg: &Message) {
-    let guild_id = msg.guild_id.expect("Error getting guild ID");
+pub async fn mute(ctx: &Context, msg: &Message) -> Result<(), anyhow::Error> {
+    let guild_id = msg.guild_id.expect("BumbleBot does not support DMs");
     let author = &msg.author;
 
-    let member = ctx
-        .http
-        .get_member(guild_id, author.id)
-        .await
-        .expect("Error getting user");
+    let member = ctx.http.get_member(guild_id, author.id).await?;
 
-    msg.channel_id
-        .say(&ctx.http, "shut the FUCK")
-        .await
-        .expect("Error sending message");
+    msg.channel_id.say(&ctx.http, "shut the FUCK").await?;
 
-    if let Err(e) = member
-        .add_role(&ctx.http, get_id_from_env("ABB_MUTE_ROLE"))
-        .await
-    {
-        eprintln!("Error muting user: {}", e);
-    }
+    member
+        .add_role(&ctx.http, get_id_from_env("ABB_MUTE_ROLE")?)
+        .await?;
+
+    Ok(())
 }
