@@ -1,14 +1,19 @@
 use {
     super::common,
     crate::{
+        commands::common::{get_member_from_user_id, send_clean_message},
         logging,
-        util::{get_id_from_env, get_member_from_user_id, random_string},
+        util::{get_id_from_env, random_string},
     },
-    serenity::{all::Message, prelude::Context},
+    serenity::{
+        all::{CreateAllowedMentions, Message},
+        prelude::Context,
+    },
 };
 
 const BAN_DELETE_DAYS: u8 = 0;
 
+#[derive(Clone, Copy)]
 pub enum Punishment {
     Kick,
     Ban,
@@ -21,7 +26,7 @@ pub async fn punish(
     msg: &Message,
     victim_id: Option<String>,
     reason: Option<String>,
-    punishment_type: &Punishment,
+    punishment_type: Punishment,
 ) -> Result<(), anyhow::Error> {
     if !common::confirm_admin(ctx, msg).await? {
         return Ok(());
@@ -32,6 +37,13 @@ pub async fn punish(
     else {
         return Ok(());
     };
+
+    if victim.user.id == msg.author.id {
+        msg.channel_id
+            .say(&ctx.http, "Don't be too hard on yourself.")
+            .await?;
+        return Ok(());
+    }
 
     let (guild_id, author) = (
         msg.guild_id.expect("BumbleBot does not support DMs"),
@@ -84,8 +96,13 @@ pub async fn punish(
         }
     };
 
-    msg.channel_id.say(&ctx.http, &log_text).await?;
+    send_clean_message(
+        ctx,
+        msg.channel_id,
+        &log_text,
+        CreateAllowedMentions::new().users([author.id, victim.user.id]),
+    )
+    .await?;
     logging::log(ctx, &log_text).await;
-
     Ok(())
 }

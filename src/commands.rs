@@ -1,4 +1,5 @@
 use crate::{
+    commands::punish::Punishment,
     storage_models::Scratchpad,
     util::{get_id_from_env, random_string, roll_dice},
 };
@@ -36,6 +37,10 @@ pub async fn execute(
     db: &Database,
     pad: &Scratchpad,
 ) -> Result<(), anyhow::Error> {
+    if msg.author.id == get_id_from_env("ABB_BOT_USER_ID")? {
+        return Ok(());
+    }
+
     let Some(guild_id) = msg.guild_id else {
         msg.channel_id
             .say(
@@ -51,10 +56,6 @@ pub async fn execute(
             .await?;
         return Ok(());
     };
-
-    if msg.author.id == get_id_from_env("ABB_BOT_USER_ID")? {
-        return Ok(());
-    }
 
     sonic(ctx, msg).await?;
     pasta::check_pasta(ctx, msg, pad).await?;
@@ -88,10 +89,10 @@ pub async fn execute(
     match command.as_str() {
         "$help" => help::help(ctx, msg).await,
         "$buzz" => buzz::buzz(ctx, msg).await,
-        "$kick" => punish::punish(ctx, msg, target, arg, &punish::Punishment::Kick).await,
-        "$ban" => punish::punish(ctx, msg, target, arg, &punish::Punishment::Ban).await,
-        "$mute" => punish::punish(ctx, msg, target, arg, &punish::Punishment::Mute).await,
-        "$unmute" => punish::punish(ctx, msg, target, arg, &punish::Punishment::Unmute).await,
+        "$kick" => punish::punish(ctx, msg, target, arg, Punishment::Kick).await,
+        "$ban" => punish::punish(ctx, msg, target, arg, Punishment::Ban).await,
+        "$mute" => punish::punish(ctx, msg, target, arg, Punishment::Mute).await,
+        "$unmute" => punish::punish(ctx, msg, target, arg, Punishment::Unmute).await,
         "$announcement" => announcement::announcement(ctx, msg, arg).await,
         "$giveAdmin" => give_admin::give_admin(ctx, msg, pad).await,
         "$clean" => clean::clean(ctx, msg, arg).await,
@@ -126,13 +127,13 @@ fn parse_command(
     for re in regexes {
         if re.is_match(text) {
             let caps = re.captures(text).expect("Checked for match");
-
-            let command = caps.name("command").map(|command| String::from(command.as_str()));
-
-            let target = caps.name("target").map(|target| String::from(target.as_str()));
-
+            let command = caps
+                .name("command")
+                .map(|command| String::from(command.as_str()));
+            let target = caps
+                .name("target")
+                .map(|target| String::from(target.as_str()));
             let args = caps.name("args").map(|args| String::from(args.as_str()));
-
             return Ok((command, target, args));
         }
     }

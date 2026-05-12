@@ -1,15 +1,17 @@
 use {
     super::common,
     crate::{
-        commands::get_message_quips::{
-            channel2quip, conditional_quip, fav_quip, last_quip, snd_quip, total_quip, word_quip,
+        commands::{
+            common::get_member_from_user_id,
+            get_message_quips::{
+                channel2quip, conditional_quip, fav_quip, get_absolute_amount, get_channel_from_id,
+                get_channel_name, last_quip, snd_quip, total_quip, word_quip, AbsoluteAmount,
+                Channel,
+            },
         },
         storage,
         storage_models::MessageModel,
-        util::{
-            get_absolute_amount, get_channel_from_id, get_channel_name, get_id_from_env,
-            get_member_from_user_id, random_string, AbsoluteAmount, Channel,
-        },
+        util::{get_id_from_env, random_string},
     },
     redb::Database,
     serenity::{all::Message, prelude::Context},
@@ -60,7 +62,8 @@ pub async fn get_message_data(
     }
 
     let victim = get_member_from_user_id(ctx, msg, victim, None)
-        .await?.map(|m| m.user)
+        .await?
+        .map(|m| m.user)
         .unwrap_or(msg.author.clone());
 
     let username = &victim.name;
@@ -440,8 +443,6 @@ pub async fn get_message_data(
         ));
     }
 
-    response.push_str(&format!("\n-# Took {:.2?}", now.elapsed()?));
     msg.channel_id.say(&ctx.http, response).await?;
-
     Ok(())
 }

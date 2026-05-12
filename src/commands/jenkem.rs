@@ -1,9 +1,9 @@
 use {
     crate::{
-        commands::bee_sting,
+        commands::{bee_sting, common::get_member_from_user_id},
         storage,
         storage_models::Scratchpad,
-        util::{get_id_from_env, get_member_from_user_id},
+        util::get_id_from_env,
     },
     serenity::{
         model::{channel::Message, id::UserId},
