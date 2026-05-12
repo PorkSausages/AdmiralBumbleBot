@@ -1,4 +1,73 @@
-use crate::util::{random_string, AbsoluteAmount, Channel};
+use crate::util::{get_id_from_env, random_string};
+
+#[derive(Clone, Copy, PartialEq, PartialOrd)]
+pub enum AbsoluteAmount {
+    Small,
+    Medium,
+    Big,
+}
+
+pub fn get_absolute_amount(value: usize, big_bound: usize, mid_bound: usize) -> AbsoluteAmount {
+    if value >= big_bound {
+        AbsoluteAmount::Big
+    } else if value >= mid_bound {
+        AbsoluteAmount::Medium
+    } else {
+        AbsoluteAmount::Small
+    }
+}
+
+#[derive(Eq, Hash, PartialEq, Clone, Copy)]
+pub enum Channel {
+    General,
+    Daw,
+    Hardware,
+    Plugins,
+    Deals,
+    Photography,
+    Code,
+    PluginDev,
+    Shitposting,
+    Food,
+    Bot,
+}
+
+pub fn get_channel_from_id(id: u64) -> Result<Option<Channel>, anyhow::Error> {
+    for (chan_key, chan) in [
+        ("ABB_GENERAL", Channel::General),
+        ("ABB_DAW", Channel::Daw),
+        ("ABB_WARE", Channel::Hardware),
+        ("ABB_PLUG", Channel::Plugins),
+        ("ABB_DEAL", Channel::Deals),
+        ("ABB_PHOTO", Channel::Photography),
+        ("ABB_CODE", Channel::Code),
+        ("ABB_DEV", Channel::PluginDev),
+        ("ABB_SHIT", Channel::Shitposting),
+        ("ABB_FOOD", Channel::Food),
+        ("ABB_BOT", Channel::Bot),
+    ] {
+        if get_id_from_env(chan_key)? == id {
+            return Ok(Some(chan));
+        }
+    }
+    Ok(None)
+}
+
+pub fn get_channel_name(channel: Channel) -> &'static str {
+    match channel {
+        Channel::Bot => "bot",
+        Channel::Code => "code",
+        Channel::Daw => "DAW",
+        Channel::Deals => "deals",
+        Channel::Food => "food",
+        Channel::General => "general",
+        Channel::Hardware => "hardware",
+        Channel::Photography => "photography",
+        Channel::Plugins => "plugins",
+        Channel::PluginDev => "plugin dev",
+        Channel::Shitposting => "shitposting",
+    }
+}
 
 pub fn random_daw() -> String {
     random_string(&[
@@ -360,9 +429,9 @@ pub fn conditional_quip(condition: bool) -> String {
             "and yet,",
             "but surprisingly,",
             "but ironically,",
-            ", though interestingly,",
+            "though interestingly,",
             "but for some strange reason,",
-            ", though paradoxically,",
+            "though paradoxically,",
         ])
     }
 }

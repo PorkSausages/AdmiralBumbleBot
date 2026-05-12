@@ -1,9 +1,9 @@
 use crate::{
-    commands::common::confirm_admin,
+    commands::common::{send_clean_message},
     storage_models::{PastaModel, Scratchpad},
-    util::{get_id_from_env, random_string, roll_dice},
+    util::{get_id_from_env, is_grownup, random_string, roll_dice},
 };
-use serenity::{model::channel::Message, prelude::Context};
+use serenity::{all::CreateAllowedMentions, model::channel::Message, prelude::Context};
 
 pub async fn check_pasta(
     ctx: &Context,
@@ -44,7 +44,13 @@ pub async fn check_pasta(
         pasta.payload
     );
 
-    msg.channel_id.say(&ctx.http, &payload).await?;
+    send_clean_message(
+        ctx,
+        msg.channel_id,
+        &payload,
+        CreateAllowedMentions::new().replied_user(true),
+    )
+    .await?;
 
     Ok(())
 }
@@ -52,63 +58,50 @@ pub async fn check_pasta(
 pub async fn get_pasta(
     ctx: &Context,
     msg: &Message,
+    slug: Option<String>,
     pad: &Scratchpad,
-    args: &str,
 ) -> Result<(), anyhow::Error> {
-    let Some(pasta) = pad.with(|pad| {
-        pad.pastas
-            .iter()
-            .find(|(slug, _pasta)| slug.eq_ignore_ascii_case(args))
-            .map(|(_slug, pasta)| pasta.clone())
-    }) else {
-        msg.channel_id
-            .say(
-                &ctx.http,
-                format!(
-                    "No pasta found for this slug.\nExisting pasta slugs:`{:?}`",
-                    pad.with(|pad| { pad.pastas.keys().cloned().collect::<Vec<String>>() })
-                ),
-            )
-            .await?;
-        return Ok(());
+    let response = match slug.and_then(|s| {
+        pad.with(|pad| {
+            pad.pastas
+                .iter()
+                .find(|(pasta_slug, _pasta)| pasta_slug.eq_ignore_ascii_case(&s))
+                .map(|(_slug, pasta)| pasta.clone())
+        })
+    }) {
+        Some(pasta) => format!(
+            "**Triggers:** {:?}\n**Chance:** {}/100\n**Includes mention:** {}\n**Payload:** {}",
+            pasta.triggers, pasta.chance, pasta.includes_mention, pasta.payload
+        ),
+        None => format!(
+            "No pasta found for this slug.\nExisting pasta slugs:`{:?}`",
+            pad.with(|pad| { pad.pastas.keys().cloned().collect::<Vec<String>>() })
+        ),
     };
-
-    msg.channel_id
-        .say(
-            &ctx.http,
-            format!(
-                "**Triggers:** {:?}\n**Chance:** {}/100\n**Includes mention:** {}\n**Payload:** {}",
-                pasta.triggers, pasta.chance, pasta.includes_mention, pasta.payload
-            ),
-        )
-        .await?;
+    send_clean_message(ctx, msg.channel_id, &response, CreateAllowedMentions::new()).await?;
     Ok(())
 }
 
 pub async fn set_pasta(
     ctx: &Context,
     msg: &Message,
+    command: Option<String>,
     pad: &Scratchpad,
-    args: &str,
 ) -> Result<(), anyhow::Error> {
-    if !confirm_admin(
-        ctx,
-        &msg.author,
-        msg.guild_id.expect("BumbleBot does not support DMs"),
-    )
-    .await?
-    {
+    if !is_grownup(msg.author.id.get())? {
         return Ok(());
     }
 
-    let (slug, pasta) = match {
+    let response = match {
         || -> Result<_, String> {
-            let parts = shlex::split(args).ok_or("Invalid quoting")?;
+            let parts = command
+                .and_then(|s| shlex::split(&s))
+                .ok_or("Invalid command")?;
             let mut parts = parts.iter();
 
             let slug = parts.next().ok_or("Missing slug")?.to_string();
             let mut triggers = Vec::new();
-            let mut chance = 100u32;
+            let mut chance: u32 = 100;
             let mut includes_mention = false;
             let mut payload = None;
 
@@ -149,79 +142,51 @@ pub async fn set_pasta(
             ))
         }
     }() {
-        Ok((slug, pasta)) => (slug, pasta),
-        Err(error) => {
-            msg.channel_id
-            .say(
-                &ctx.http,
-                format!(
-                    "**{}**\nUsage: `$setPasta SLUG trigger:'TRIGGER1' trigger:'TRIGGER2'* chance:(1-100)* mention:(true|false)* payload:'PASTA'`\n*=optional",
-                    error
-                ),
+        Ok((slug, pasta)) => {
+            pad.with_mut(|pad| pad.pastas.insert(slug.clone(), pasta.clone()))?;
+            format!(
+                "Updated the `{}` pasta.\n**Triggers:** {:?}\n**Chance:** {}/100\n**Includes mention:** {}\n**Payload:** {}",
+                slug, pasta.triggers, pasta.chance, pasta.includes_mention, pasta.payload
             )
-            .await?;
-            return Ok(());
+        }
+        Err(error) => {
+            format!(
+                "**Error: {}**\nUsage: `$setPasta SLUG trigger:'TRIGGER1' trigger:'TRIGGER2'* chance:(1-100)* mention:(true|false)* payload:'PASTA'`\n*=optional",
+                error
+            )
         }
     };
 
-    pad.with_mut(|pad| pad.pastas.insert(slug.clone(), pasta.clone()))?;
-
-    msg.channel_id
-    .say(
-        &ctx.http,
-        format!(
-            "Updated the `{}` pasta.\n**Triggers:** {:?}\n**Chance:** {}/100\n**Includes mention:** {}\n**Payload:** {}",
-            slug, pasta.triggers, pasta.chance, pasta.includes_mention, pasta.payload
-        ),
-    )
-    .await?;
-
+    send_clean_message(ctx, msg.channel_id, &response, CreateAllowedMentions::new()).await?;
     Ok(())
 }
 
 pub async fn del_pasta(
     ctx: &Context,
     msg: &Message,
+    slug: Option<String>,
     pad: &Scratchpad,
-    args: &str,
 ) -> Result<(), anyhow::Error> {
-    if !confirm_admin(
-        ctx,
-        &msg.author,
-        msg.guild_id.expect("BumbleBot does not support DMs"),
-    )
-    .await?
-    {
+    if !is_grownup(msg.author.id.get())? {
         return Ok(());
     }
 
-    if pad.with_mut(|pad| pad.pastas.remove(args))?.is_none() {
-        msg.channel_id
-            .say(
-                &ctx.http,
-                format!(
-                    "No pasta found for this slug.\nExisting pasta slugs:`{:?}`",
-                    pad.with(|pad| { pad.pastas.keys().cloned().collect::<Vec<String>>() })
-                ),
-            )
-            .await?;
-        return Ok(());
+    let response = match slug.map_or(Ok(None), |s| pad.with_mut(|pad| pad.pastas.remove(&s)))? {
+        Some(_) => format!(
+            "Pasta deleted. {}",
+            random_string(&[
+                "I liked that one.",
+                "What a shame.",
+                "Wasn't really fond of that one to begin with.",
+                "Good riddance."
+            ])
+        ),
+        None => format!(
+            "No pasta found for this slug.\nExisting pasta slugs:`{:?}`",
+            pad.with(|pad| { pad.pastas.keys().cloned().collect::<Vec<String>>() })
+        ),
     };
 
-    msg.channel_id
-        .say(
-            &ctx.http,
-            format!(
-                "Pasta deleted. {}",
-                random_string(&[
-                    "I liked that one.",
-                    "What a shame.",
-                    "Wasn't really fond of that one to begin with.",
-                    "Good riddance."
-                ])
-            ),
-        )
-        .await?;
-
+    send_clean_message(ctx, msg.channel_id, &response, CreateAllowedMentions::new()).await?;
     Ok(())
 }

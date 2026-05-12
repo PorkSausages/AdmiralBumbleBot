@@ -1,5 +1,10 @@
 use {
-    crate::{commands::bee_sting, storage, storage_models::Scratchpad, util::get_id_from_env},
+    crate::{
+        commands::{bee_sting, common::get_member_from_user_id},
+        storage,
+        storage_models::Scratchpad,
+        util::get_id_from_env,
+    },
     serenity::{
         model::{channel::Message, id::UserId},
         prelude::Context,
@@ -9,27 +14,21 @@ use {
 pub async fn pass_jenkem(
     ctx: &Context,
     msg: &Message,
-    target: &str,
+    victim: Option<String>,
     pad: &Scratchpad,
 ) -> Result<(), anyhow::Error> {
-    let author = &msg.author;
-    let recipient = match target.parse() {
-        Ok(id) => UserId::new(id),
-        Err(_) => {
-            msg.channel_id
-                .say(&ctx.http, "Please specify a victim.")
-                .await?;
-            return Ok(());
-        }
-    };
-
     let allergic = [
         get_id_from_env("ABB_CONNER_ID")?,
         get_id_from_env("ABB_WRL_ID")?,
     ];
-    let is_allergic = allergic.contains(&recipient.get());
+    let Some(victim) =
+        get_member_from_user_id(ctx, msg, victim, Some("Please specify a victim")).await?
+    else {
+        return Ok(());
+    };
 
-    if !(jenkem_possession_check(ctx, msg, author.id.get(), pad).await? && author.id != recipient) {
+    let is_allergic = allergic.contains(&victim.user.id.get());
+    if !(jenkem_possession_check(ctx, msg, pad).await? && msg.author.id != victim.user.id) {
         return Ok(());
     }
 
@@ -37,10 +36,7 @@ pub async fn pass_jenkem(
         msg.channel_id
             .say(
                 &ctx.http,
-                format!(
-                    "{} is allergic to jenkem!",
-                    recipient.to_user(&ctx.http).await?.name
-                ),
+                format!("{} is allergic to jenkem!", victim.user.name),
             )
             .await?;
 
@@ -48,7 +44,7 @@ pub async fn pass_jenkem(
         return Ok(());
     }
 
-    let huff_count = storage::pass_jenkem(recipient.get(), pad)?;
+    let huff_count = storage::pass_jenkem(victim.user.id.get(), pad)?;
     storage::update_jenkem_streak(huff_count, pad)?;
 
     msg.channel_id
@@ -56,9 +52,7 @@ pub async fn pass_jenkem(
             &ctx.http,
             format!(
                 "{} passed the jenkem to {}! The jenkem has been huffed {} time(s).",
-                author.name,
-                recipient.to_user(&ctx.http).await?.name,
-                huff_count
+                msg.author.name, victim.user.name, huff_count
             ),
         )
         .await?;
@@ -116,7 +110,7 @@ pub async fn reject_jenkem(
 ) -> Result<(), anyhow::Error> {
     let message: &str;
 
-    if jenkem_possession_check(ctx, msg, msg.author.id.get(), pad).await? {
+    if jenkem_possession_check(ctx, msg, pad).await? {
         message = match storage::reject_jenkem(pad)? {
             Ok(()) => "The jenkem has been returned!",
             Err(()) => "Can't return the jenkem! You'll have to pass it...",
@@ -146,12 +140,11 @@ pub async fn jenkem_streak(
 async fn jenkem_possession_check(
     ctx: &Context,
     msg: &Message,
-    author_id: u64,
     pad: &Scratchpad,
 ) -> Result<bool, anyhow::Error> {
     let current_holder = storage::locate_jenkem(pad);
 
-    if current_holder != author_id {
+    if current_holder != msg.author.id.get() {
         msg.channel_id
             .say(&ctx.http, "You do not have the jenkem!")
             .await?;

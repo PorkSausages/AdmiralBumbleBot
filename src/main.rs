@@ -50,5 +50,6 @@ async fn main() {
     .expect("Discord should accept the client");
 
     client.cache.set_max_messages(CACHE_SIZE);
+    println!("Sonic");
     client.start().await.expect("Client should be started")
 }

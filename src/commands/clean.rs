@@ -1,36 +1,49 @@
 use {
     super::common,
     crate::logging,
-    serenity::{all::GetMessages, model::channel::Message, prelude::Context},
+    serenity::{
+        all::{GetMessages, Message},
+        prelude::Context,
+    },
 };
 
-pub async fn clean(ctx: &Context, msg: &Message, args: &str) -> Result<(), anyhow::Error> {
-    let guild_id = msg.guild_id.expect("BumbleBot does not support DMs");
-    let author = &msg.author;
-    if !common::confirm_admin(ctx, author, guild_id).await? {
+pub async fn clean(
+    ctx: &Context,
+    msg: &Message,
+    limit: Option<String>,
+) -> Result<(), anyhow::Error> {
+    if !common::confirm_admin(ctx, msg).await? {
         return Ok(());
     };
 
-    let limit = args.parse::<u8>()?;
-    let channel_id = msg.channel_id;
-
-    let mut messages = channel_id
+    let Some(limit) = limit.and_then(|l| l.parse::<u8>().ok()) else {
+        msg.channel_id
+            .say(&ctx.http, "Please include a message count.")
+            .await?;
+        return Ok(());
+    };
+    let mut messages = msg
+        .channel_id
         .messages(&ctx.http, GetMessages::new().before(msg.id).limit(limit))
         .await?;
 
     messages.reverse();
     messages.push(msg.clone());
 
-    channel_id
+    msg.channel_id
         .delete_messages(&ctx.http, messages.iter())
         .await?;
 
-    let mut log_text = format!("🧼 {} messages cleaned by <@!{}>!", limit, author.id.get());
+    let mut log_text = format!(
+        "🧼 {} messages cleaned by <@!{}>!",
+        limit,
+        msg.author.id.get()
+    );
 
-    channel_id.say(&ctx.http, &log_text).await?;
+    msg.channel_id.say(&ctx.http, &log_text).await?;
 
     log_text.pop(); //remove the '!'
-    log_text.push_str(&format!(" in <#{}>:\n", channel_id));
+    log_text.push_str(&format!(" in <#{}>:\n", msg.channel_id));
 
     let range = 0..messages.len() - 1;
     for i in range {

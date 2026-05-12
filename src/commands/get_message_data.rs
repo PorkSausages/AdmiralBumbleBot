@@ -1,22 +1,20 @@
 use {
     super::common,
     crate::{
-        commands::get_message_quips::{
-            channel2quip, conditional_quip, fav_quip, last_quip, snd_quip, total_quip, word_quip,
+        commands::{
+            common::get_member_from_user_id,
+            get_message_quips::{
+                channel2quip, conditional_quip, fav_quip, get_absolute_amount, get_channel_from_id,
+                get_channel_name, last_quip, snd_quip, total_quip, word_quip, AbsoluteAmount,
+                Channel,
+            },
         },
         storage,
         storage_models::MessageModel,
-        util::{
-            channel2name, get_absolute_amount, get_id_from_env, id2channel, random_string,
-            AbsoluteAmount, Channel,
-        },
+        util::{get_id_from_env, random_string},
     },
     redb::Database,
-    serenity::{
-        all::ChannelId,
-        model::{channel::Message, id::UserId},
-        prelude::Context,
-    },
+    serenity::{all::Message, prelude::Context},
     std::{
         cmp::Reverse,
         collections::HashMap,
@@ -44,36 +42,13 @@ fn get_total_amount(bucket: &[MessageModel]) -> AbsoluteAmount {
     get_absolute_amount(bucket.len(), BIG_TOTAL, MID_TOTAL)
 }
 
-async fn send_no_data(
-    channel: &ChannelId,
-    username: &str,
-    ctx: &Context,
-) -> Result<(), anyhow::Error> {
-    channel
-    .say(
-        &ctx.http,
-        format!(
-            "{}, {}.\n\n{}",
-            random_string(&[
-                "I don't know enough about you",
-                "I'm not sure I recall your name",
-                "What's the rush? You'll get to know us soon enough"
-            ]),
-            username,
-            "-# Talk in 3 or more main channels so we have enough data to ~~sell to advertisers~~ personalise your experience."
-        ),
-    )
-    .await?;
-    Ok(())
-}
-
 pub async fn get_message_data(
     ctx: &Context,
     msg: &Message,
-    target: &str,
+    victim: Option<String>,
     db: &Database,
 ) -> Result<(), anyhow::Error> {
-    if !common::in_bot_channel(msg)? {
+    if !common::in_bot_channel(msg.channel_id.get())? {
         msg.channel_id
             .say(
                 &ctx.http,
@@ -86,17 +61,36 @@ pub async fn get_message_data(
         return Ok(());
     }
 
-    let user_id: u64 = match target.parse() {
-        Ok(value) => value,
-        Err(_) => msg.author.id.get(),
-    };
+    let victim = get_member_from_user_id(ctx, msg, victim, None)
+        .await?
+        .map(|m| m.user)
+        .unwrap_or(msg.author.clone());
 
-    let username = UserId::new(user_id).to_user(&ctx.http).await?.name;
+    let username = &victim.name;
     let now: SystemTime = SystemTime::now();
 
-    let data = storage::get_user_message_data(user_id, db)?;
+    let send_no_data = async || -> Result<(), anyhow::Error> {
+        msg.channel_id
+        .say(
+            &ctx.http,
+            format!(
+                "{}, {}.\n\n{}",
+                random_string(&[
+                    "I don't know enough about you",
+                    "I'm not sure I recall your name",
+                    "What's the rush? You'll get to know us soon enough"
+                ]),
+                username,
+                "-# Talk in 3 or more main channels so we have enough data to ~~sell to advertisers~~ personalise your experience."
+            ),
+        )
+        .await?;
+        Ok(())
+    };
+
+    let data = storage::get_user_message_data(victim.id.get(), db)?;
     if data.is_empty() {
-        send_no_data(&msg.channel_id, &username, ctx).await?;
+        send_no_data().await?;
         return Ok(());
     }
 
@@ -105,14 +99,14 @@ pub async fn get_message_data(
     let delta = now.duration_since(UNIX_EPOCH)? - Duration::from_secs(first.time);
 
     data.into_iter().for_each(|msg| {
-        let Ok(Some(channel)) = id2channel(msg.channel) else {
+        let Ok(Some(channel)) = get_channel_from_id(msg.channel) else {
             return;
         };
         buckets.entry(channel).or_default().push(msg);
     });
 
     if buckets.len() < 3 {
-        send_no_data(&msg.channel_id, &username, ctx).await?;
+        send_no_data().await?;
         return Ok(());
     }
 
@@ -134,8 +128,8 @@ pub async fn get_message_data(
         random_string(&["It all started", "It began", "The story starts"]),
         first.words,
         if first.words != 1 { "s" } else { "" },
-        match id2channel(first.channel) {
-            Ok(Some(channel)) => format!("the {}", channel2name(channel)),
+        match get_channel_from_id(first.channel) {
+            Ok(Some(channel)) => format!("the {}", get_channel_name(channel)),
             _ => String::from_str("some random")?, //this needs to be a String instead of a &str?
         },
         random_string(&["went south", "quickly spiraled", "rapidly deteriorated"])
@@ -203,7 +197,7 @@ pub async fn get_message_data(
                 "they only seem interested in"
             ]),
             channel2quip(*fav_channel),
-            channel2name(*fav_channel),
+            get_channel_name(*fav_channel),
             total_quip(&fav_total_amount),
             fav_bucket.len(),
             conditional_quip(fav_total_amount == fav_word_amount),
@@ -275,7 +269,7 @@ pub async fn get_message_data(
             ]),
             channel2quip(*fav_channel),
             channel2quip(*snd_channel),
-            channel2name(*snd_channel),
+            get_channel_name(*snd_channel),
             conditional_quip(fav_total_amount == snd_total_amount),
             if fav_total_amount != snd_total_amount {
                 random_string(&[
@@ -338,7 +332,7 @@ pub async fn get_message_data(
                 random_string(&["they're not meaningfully contributing to the conversation", "they like to keep it short", "they keep things brief"])
             },
             random_string(&["I can see why they like", "I can see why they prefer", "It's obvious why they enjoy"]),
-            channel2name(*fav_channel),
+            get_channel_name(*fav_channel),
             snd_quip(*snd_channel)
         )
     );
@@ -362,7 +356,7 @@ pub async fn get_message_data(
                 "They're really not interested in"
             ]),
             channel2quip(*last_channel),
-            channel2name(*last_channel),
+            get_channel_name(*last_channel),
             conditional_quip(last_total_amount == AbsoluteAmount::Small),
             match last_total_amount {
                 AbsoluteAmount::Small => random_string(&["they're barely active in it", "nobody really sees them there", "they're not there often"]),
@@ -422,9 +416,9 @@ pub async fn get_message_data(
             } else {
                 random_string(&["put less thought into each", "have little to say per", "don't really think about each"])
             },
-            channel2name(*fav_channel),
+            get_channel_name(*fav_channel),
             random_string(&["I think they should give", "It would be nice if they gave", "I personally would give"]),
-            channel2name(*last_channel),
+            get_channel_name(*last_channel),
             random_string(&["more love", "another go", "another shot"]),
             last_quip(*last_channel)
         )
@@ -440,7 +434,7 @@ pub async fn get_message_data(
             "**{}.** {} in the **{}** channel (yapping level: {})\n",
             idx + 1,
             channel2quip(*channel),
-            channel2name(*channel),
+            get_channel_name(*channel),
             match get_word_amount(bucket) {
                 AbsoluteAmount::Small => random_string(&["low", "tiny", "minimal"]),
                 AbsoluteAmount::Medium => random_string(&["medium", "fair", "acceptable"]),
@@ -449,8 +443,6 @@ pub async fn get_message_data(
         ));
     }
 
-    response.push_str(&format!("\n-# Took {:.2?}", now.elapsed()?));
     msg.channel_id.say(&ctx.http, response).await?;
-
     Ok(())
 }
