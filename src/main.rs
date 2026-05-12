@@ -1,10 +1,10 @@
 #![warn(clippy::all, clippy::needless_pass_by_value)]
 
 use {
-    crate::{storage_models::Scratchpad},
+    crate::storage_models::Scratchpad,
     handler::Handler,
     redb::Database,
-    serenity::{Client, prelude::GatewayIntents},
+    serenity::{prelude::GatewayIntents, Client},
     std::{env, sync::Arc},
 };
 

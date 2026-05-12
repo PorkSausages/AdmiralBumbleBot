@@ -22,7 +22,12 @@ pub async fn get_member_from_user_id(
     fail_message: Option<&str>,
 ) -> Result<Option<Member>, anyhow::Error> {
     let Some(victim) = (match id.and_then(|s| s.parse::<u64>().ok()) {
-        Some(id) => Some(msg.guild_id.expect("BumbleBot does not support DMs").member(&ctx.http, id).await?),
+        Some(id) => Some(
+            msg.guild_id
+                .expect("BumbleBot does not support DMs")
+                .member(&ctx.http, id)
+                .await?,
+        ),
         None => None,
     }) else {
         if let Some(fail_message) = fail_message {

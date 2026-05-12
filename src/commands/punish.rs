@@ -4,10 +4,7 @@ use {
         logging,
         util::{get_id_from_env, get_member_from_user_id, random_string},
     },
-    serenity::{
-        all::Message,
-        prelude::Context,
-    },
+    serenity::{all::Message, prelude::Context},
 };
 
 const BAN_DELETE_DAYS: u8 = 0;
@@ -26,23 +23,20 @@ pub async fn punish(
     reason: Option<String>,
     punishment_type: &Punishment,
 ) -> Result<(), anyhow::Error> {
-
     if !common::confirm_admin(ctx, &msg).await? {
         return Ok(());
     }
 
-    let Some(victim) = get_member_from_user_id(
-        ctx,
-        msg,
-        victim_id,
-        Some("Please specify a victim"),
-    )
-    .await?
+    let Some(victim) =
+        get_member_from_user_id(ctx, msg, victim_id, Some("Please specify a victim")).await?
     else {
         return Ok(());
     };
 
-    let (guild_id, author) = (msg.guild_id.expect("BumbleBot does not support DMs"), &msg.author);
+    let (guild_id, author) = (
+        msg.guild_id.expect("BumbleBot does not support DMs"),
+        &msg.author,
+    );
 
     let reason = reason.unwrap_or(random_string(&[
         "(they just felt like it)",

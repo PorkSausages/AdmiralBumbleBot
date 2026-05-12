@@ -37,16 +37,18 @@ pub async fn execute(
     pad: &Scratchpad,
 ) -> Result<(), anyhow::Error> {
     let Some(guild_id) = msg.guild_id else {
-        msg.channel_id.say(
-            ctx,
-            random_string(&[
-                "Leave me alone!",
-                "I don't know you like that.",
-                "I think we should just stay friends.",
-                "Let's keep things server-only.",
-                "I'm telling Bee about this.",
-            ]),
-        ).await?;
+        msg.channel_id
+            .say(
+                ctx,
+                random_string(&[
+                    "Leave me alone!",
+                    "I don't know you like that.",
+                    "I think we should just stay friends.",
+                    "Let's keep things server-only.",
+                    "I'm telling Bee about this.",
+                ]),
+            )
+            .await?;
         return Ok(());
     };
 
@@ -93,10 +95,7 @@ pub async fn execute(
         "$announcement" => announcement::announcement(ctx, msg, arg).await,
         "$giveAdmin" => give_admin::give_admin(ctx, msg, pad).await,
         "$clean" => clean::clean(ctx, msg, arg).await,
-        "$getMessageData" => {
-            get_message_data::get_message_data(ctx, msg, target, db)
-                .await
-        }
+        "$getMessageData" => get_message_data::get_message_data(ctx, msg, target, db).await,
         "$slap" => slap::slap(ctx, msg, target, arg).await,
         "$passJenkem" => jenkem::pass_jenkem(ctx, msg, target, pad).await,
         "$brewJenkem" => jenkem::brew_jenkem(ctx, msg, pad).await,

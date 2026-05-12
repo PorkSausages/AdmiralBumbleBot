@@ -1,6 +1,14 @@
 use {
-    crate::{commands::bee_sting, storage, storage_models::Scratchpad, util::{get_id_from_env, get_member_from_user_id}},
-    serenity::{model::{channel::Message, id::UserId}, prelude::Context},
+    crate::{
+        commands::bee_sting,
+        storage,
+        storage_models::Scratchpad,
+        util::{get_id_from_env, get_member_from_user_id},
+    },
+    serenity::{
+        model::{channel::Message, id::UserId},
+        prelude::Context,
+    },
 };
 
 pub async fn pass_jenkem(
@@ -13,7 +21,9 @@ pub async fn pass_jenkem(
         get_id_from_env("ABB_CONNER_ID")?,
         get_id_from_env("ABB_WRL_ID")?,
     ];
-    let Some(victim) = get_member_from_user_id(ctx, msg, victim, Some("Please specify a victim")).await? else {
+    let Some(victim) =
+        get_member_from_user_id(ctx, msg, victim, Some("Please specify a victim")).await?
+    else {
         return Ok(());
     };
 
@@ -26,10 +36,7 @@ pub async fn pass_jenkem(
         msg.channel_id
             .say(
                 &ctx.http,
-                format!(
-                    "{} is allergic to jenkem!",
-                    victim.user.name
-                ),
+                format!("{} is allergic to jenkem!", victim.user.name),
             )
             .await?;
 
@@ -45,9 +52,7 @@ pub async fn pass_jenkem(
             &ctx.http,
             format!(
                 "{} passed the jenkem to {}! The jenkem has been huffed {} time(s).",
-                msg.author.name,
-                victim.user.name,
-                huff_count
+                msg.author.name, victim.user.name, huff_count
             ),
         )
         .await?;

@@ -7,14 +7,12 @@ use {
         storage,
         storage_models::MessageModel,
         util::{
-            AbsoluteAmount, Channel, get_absolute_amount, get_channel_from_id, get_channel_name, get_id_from_env, get_member_from_user_id, random_string
+            get_absolute_amount, get_channel_from_id, get_channel_name, get_id_from_env,
+            get_member_from_user_id, random_string, AbsoluteAmount, Channel,
         },
     },
     redb::Database,
-    serenity::{
-        all::Message,
-        prelude::Context,
-    },
+    serenity::{all::Message, prelude::Context},
     std::{
         cmp::Reverse,
         collections::HashMap,

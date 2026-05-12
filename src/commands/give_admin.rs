@@ -4,7 +4,9 @@ use {
         logging, storage,
         storage_models::Scratchpad,
         util::{get_id_from_env, roll_dice},
-    }, serenity::all::{Context, Message}};
+    },
+    serenity::all::{Context, Message},
+};
 
 pub async fn give_admin(
     ctx: &Context,

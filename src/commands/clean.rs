@@ -1,22 +1,29 @@
 use {
     super::common,
     crate::logging,
-    serenity::{all::{GetMessages, Message}, prelude::Context},
+    serenity::{
+        all::{GetMessages, Message},
+        prelude::Context,
+    },
 };
 
 pub async fn clean(
     ctx: &Context,
     msg: &Message,
-    limit: Option<String>) -> Result<(), anyhow::Error> {
+    limit: Option<String>,
+) -> Result<(), anyhow::Error> {
     if !common::confirm_admin(ctx, msg).await? {
         return Ok(());
     };
 
-    let Some(limit) = limit.and_then(|l| {l.parse::<u8>().ok()}) else {
-        msg.channel_id.say(&ctx.http, "Please include a message count.").await?;
+    let Some(limit) = limit.and_then(|l| l.parse::<u8>().ok()) else {
+        msg.channel_id
+            .say(&ctx.http, "Please include a message count.")
+            .await?;
         return Ok(());
     };
-    let mut messages = msg.channel_id
+    let mut messages = msg
+        .channel_id
         .messages(&ctx.http, GetMessages::new().before(msg.id).limit(limit))
         .await?;
 
@@ -27,7 +34,11 @@ pub async fn clean(
         .delete_messages(&ctx.http, messages.iter())
         .await?;
 
-    let mut log_text = format!("🧼 {} messages cleaned by <@!{}>!", limit, msg.author.id.get());
+    let mut log_text = format!(
+        "🧼 {} messages cleaned by <@!{}>!",
+        limit,
+        msg.author.id.get()
+    );
 
     msg.channel_id.say(&ctx.http, &log_text).await?;
 

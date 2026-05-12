@@ -1,6 +1,4 @@
-use serenity::{
-    all::Message, prelude::Context
-};
+use serenity::{all::Message, prelude::Context};
 
 use crate::util::get_member_from_user_id;
 
@@ -10,9 +8,10 @@ pub async fn slap(
     victim: Option<String>,
     weapon: Option<String>,
 ) -> Result<(), anyhow::Error> {
-
     let slapper = &msg.author.name;
-    let Some(victim) = get_member_from_user_id(ctx, msg, victim, Some("Please specify a victim.")).await? else {
+    let Some(victim) =
+        get_member_from_user_id(ctx, msg, victim, Some("Please specify a victim.")).await?
+    else {
         return Ok(());
     };
 
