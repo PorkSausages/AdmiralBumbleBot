@@ -1,6 +1,6 @@
 use crate::{
     storage_models::Scratchpad,
-    util::{get_id_from_env, roll_dice},
+    util::{get_id_from_env, random_string, roll_dice},
 };
 use redb::Database;
 use serenity::model::id::RoleId;
@@ -36,6 +36,20 @@ pub async fn execute(
     db: &Database,
     pad: &Scratchpad,
 ) -> Result<(), anyhow::Error> {
+    let Some(guild_id) = msg.guild_id else {
+        msg.channel_id.say(
+            ctx,
+            random_string(&[
+                "Leave me alone!",
+                "I don't know you like that.",
+                "I think we should just stay friends.",
+                "Let's keep things server-only.",
+                "I'm telling Bee about this.",
+            ]),
+        ).await?;
+        return Ok(());
+    };
+
     if msg.author.id == get_id_from_env("ABB_BOT_USER_ID")? {
         return Ok(());
     }
@@ -48,7 +62,6 @@ pub async fn execute(
         return Ok(());
     }
 
-    let guild_id = msg.guild_id.expect("BumbleBot does not support DMs");
     let is_booster = msg
         .author
         .has_role(
@@ -58,11 +71,6 @@ pub async fn execute(
         )
         .await?;
 
-    let (command, target, args) = match parse_command(&msg.content)? {
-        Some(result) => result,
-        None => return Ok(()),
-    };
-
     if roll_dice("1d20")? == 20
         && msg.channel_id.get() != get_id_from_env("ABB_BOT_TEST_CHANNEL")?
         && !is_booster
@@ -71,33 +79,42 @@ pub async fn execute(
         return Ok(());
     }
 
+    let (Some(command), target, arg) = parse_command(&msg.content)? else {
+        return Ok(());
+    };
+
     match command.as_str() {
         "$help" => help::help(ctx, msg).await,
         "$buzz" => buzz::buzz(ctx, msg).await,
-        "$kick" => punish::punish(ctx, msg, &target, &args, &punish::Punishment::Kick).await,
-        "$ban" => punish::punish(ctx, msg, &target, &args, &punish::Punishment::Ban).await,
-        "$mute" => punish::punish(ctx, msg, &target, &args, &punish::Punishment::Mute).await,
-        "$unmute" => punish::punish(ctx, msg, &target, &args, &punish::Punishment::Unmute).await,
-        "$announcement" => announcement::announcement(ctx, msg).await,
+        "$kick" => punish::punish(ctx, msg, target, arg, &punish::Punishment::Kick).await,
+        "$ban" => punish::punish(ctx, msg, target, arg, &punish::Punishment::Ban).await,
+        "$mute" => punish::punish(ctx, msg, target, arg, &punish::Punishment::Mute).await,
+        "$unmute" => punish::punish(ctx, msg, target, arg, &punish::Punishment::Unmute).await,
+        "$announcement" => announcement::announcement(ctx, msg, arg).await,
         "$giveAdmin" => give_admin::give_admin(ctx, msg, pad).await,
-        "$clean" => clean::clean(ctx, msg, &args).await,
-        "$getMessageData" => get_message_data::get_message_data(ctx, msg, &target, db).await,
-        "$slap" => slap::slap(ctx, msg, &target, &args).await,
-        "$passJenkem" => jenkem::pass_jenkem(ctx, msg, &target, pad).await,
+        "$clean" => clean::clean(ctx, msg, arg).await,
+        "$getMessageData" => {
+            get_message_data::get_message_data(ctx, msg, target, db)
+                .await
+        }
+        "$slap" => slap::slap(ctx, msg, target, arg).await,
+        "$passJenkem" => jenkem::pass_jenkem(ctx, msg, target, pad).await,
         "$brewJenkem" => jenkem::brew_jenkem(ctx, msg, pad).await,
         "$rejectJenkem" => jenkem::reject_jenkem(ctx, msg, pad).await,
         "$locateJenkem" => jenkem::locate_jenkem(ctx, msg, pad).await,
         "$jenkemStreak" => jenkem::jenkem_streak(ctx, msg, pad).await,
-        "$roll" => roll::roll(ctx, msg, &args).await,
+        "$roll" => roll::roll(ctx, msg, arg).await,
         "$beeHealthStatus" => health::health(ctx, msg).await,
-        "$getPasta" => pasta::get_pasta(ctx, msg, pad, &args).await,
-        "$setPasta" => pasta::set_pasta(ctx, msg, pad, &args).await,
-        "$delPasta" => pasta::del_pasta(ctx, msg, pad, &args).await,
+        "$getPasta" => pasta::get_pasta(ctx, msg, arg, pad).await,
+        "$setPasta" => pasta::set_pasta(ctx, msg, arg, pad).await,
+        "$delPasta" => pasta::del_pasta(ctx, msg, arg, pad).await,
         _ => Ok(()),
     }
 }
 
-fn parse_command(text: &str) -> Result<Option<(String, String, String)>, anyhow::Error> {
+fn parse_command(
+    text: &str,
+) -> Result<(Option<String>, Option<String>, Option<String>), anyhow::Error> {
     let regexes = vec![
         Regex::new(r"(?P<command>^\$\w+) <@!(?P<target>\d+)> (?P<args>.*)")?,
         Regex::new(r"(?P<command>^\$\w+) <@!(?P<target>\d+)>")?,
@@ -112,25 +129,25 @@ fn parse_command(text: &str) -> Result<Option<(String, String, String)>, anyhow:
             let caps = re.captures(text).expect("Checked for match");
 
             let command = match caps.name("command") {
-                Some(command) => String::from(command.as_str()),
-                None => String::new(),
+                Some(command) => Some(String::from(command.as_str())),
+                None => None,
             };
 
             let target = match caps.name("target") {
-                Some(target) => String::from(target.as_str()),
-                None => String::new(),
+                Some(target) => Some(String::from(target.as_str())),
+                None => None,
             };
 
             let args = match caps.name("args") {
-                Some(args) => String::from(args.as_str()),
-                None => String::new(),
+                Some(args) => Some(String::from(args.as_str())),
+                None => None,
             };
 
-            return Ok(Some((command, target, args)));
+            return Ok((command, target, args));
         }
     }
 
-    Ok(None)
+    Ok((None, None, None))
 }
 
 async fn sonic(ctx: &Context, msg: &Message) -> Result<(), anyhow::Error> {

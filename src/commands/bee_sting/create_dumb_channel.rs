@@ -1,5 +1,6 @@
 use {
     crate::{storage_models::Scratchpad, util::get_id_from_env},
+    anyhow::Context as _,
     rand::{thread_rng, Rng},
     serenity::{all::CreateChannel, model::channel::Message, prelude::Context},
 };
@@ -14,8 +15,14 @@ pub async fn create_dumb_channel(
     let roll = thread_rng().gen_range(0..names.len());
 
     let (name, description) = (
-        names[roll as usize - 1].clone(),
-        channels[&names[roll as usize - 1]].clone(),
+        names
+            .get(roll - 1)
+            .context("Scratchpad doesn't contain random channels")?
+            .clone(),
+        channels[names
+            .get(roll - 1)
+            .context("Scratchpad doesn't contain random channels")?]
+        .clone(),
     );
 
     msg.channel_id

@@ -1,10 +1,10 @@
 #![warn(clippy::all, clippy::needless_pass_by_value)]
 
 use {
-    crate::storage_models::Scratchpad,
+    crate::{storage_models::Scratchpad},
     handler::Handler,
     redb::Database,
-    serenity::{prelude::GatewayIntents, Client},
+    serenity::{Client, prelude::GatewayIntents},
     std::{env, sync::Arc},
 };
 
@@ -50,5 +50,6 @@ async fn main() {
     .expect("Discord should accept the client");
 
     client.cache.set_max_messages(CACHE_SIZE);
+    println!("Sonic");
     client.start().await.expect("Client should be started")
 }

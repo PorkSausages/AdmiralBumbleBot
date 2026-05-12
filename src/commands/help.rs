@@ -1,6 +1,5 @@
 use serenity::{
-    all::{Colour, CreateEmbed, CreateMessage},
-    model::channel::Message,
+    all::{Colour, CreateEmbed, CreateMessage, Message},
     prelude::Context,
 };
 

@@ -2,6 +2,7 @@ use std::env;
 
 use anyhow::{anyhow, bail};
 use rand::{seq::SliceRandom, Rng};
+use serenity::all::{Context, Member, Message};
 
 pub fn get_id_from_env(key: &str) -> Result<u64, anyhow::Error> {
     Ok(env::var(key)?.parse::<u64>()?)
@@ -13,6 +14,28 @@ pub fn random_string(strings: &[&str]) -> String {
         .expect("Passed array of static strings should always have atleast 1 member")
         .to_string()
 }
+
+pub async fn get_member_from_user_id(
+    ctx: &Context,
+    msg: &Message,
+    id: Option<String>,
+    fail_message: Option<&str>,
+) -> Result<Option<Member>, anyhow::Error> {
+    let Some(victim) = (match id.and_then(|s| s.parse::<u64>().ok()) {
+        Some(id) => Some(msg.guild_id.expect("BumbleBot does not support DMs").member(&ctx.http, id).await?),
+        None => None,
+    }) else {
+        if let Some(fail_message) = fail_message {
+            msg.channel_id.say(&ctx.http, fail_message).await?;
+        }
+        return Ok(None);
+    };
+    Ok(Some(victim))
+}
+
+// pub fn contains_ping(val:&str) {
+//     val.
+// }
 
 pub fn roll_dice(notation: &str) -> Result<u32, anyhow::Error> {
     let s = notation.to_lowercase();
@@ -75,7 +98,7 @@ pub enum Channel {
     Bot,
 }
 
-pub fn id2channel(id: u64) -> Result<Option<Channel>, anyhow::Error> {
+pub fn get_channel_from_id(id: u64) -> Result<Option<Channel>, anyhow::Error> {
     for (chan_key, chan) in [
         ("ABB_GENERAL", Channel::General),
         ("ABB_DAW", Channel::Daw),
@@ -96,7 +119,7 @@ pub fn id2channel(id: u64) -> Result<Option<Channel>, anyhow::Error> {
     Ok(None)
 }
 
-pub fn channel2name(channel: Channel) -> &'static str {
+pub fn get_channel_name(channel: Channel) -> &'static str {
     match channel {
         Channel::Bot => "bot",
         Channel::Code => "code",

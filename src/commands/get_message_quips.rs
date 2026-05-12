@@ -360,9 +360,9 @@ pub fn conditional_quip(condition: bool) -> String {
             "and yet,",
             "but surprisingly,",
             "but ironically,",
-            ", though interestingly,",
+            "though interestingly,",
             "but for some strange reason,",
-            ", though paradoxically,",
+            "though paradoxically,",
         ])
     }
 }

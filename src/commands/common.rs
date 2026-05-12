@@ -1,34 +1,30 @@
 use serenity::{
-    model::{
-        channel::Message,
-        id::{GuildId, RoleId},
-        prelude::User,
-    },
-    prelude::Context,
+    all::Message, model::{
+        id::RoleId,
+    }, prelude::Context
 };
 
 use crate::util::{get_id_from_env, roll_dice};
 
 pub async fn confirm_admin(
     ctx: &Context,
-    user: &User,
-    guild: GuildId,
+    msg: &Message
 ) -> Result<bool, anyhow::Error> {
     let lucky = roll_dice("2d20")? >= 39;
-    Ok(user
+    Ok(msg.author
         .has_role(
             &ctx.http,
-            guild,
+            msg.guild_id.expect("BumbleBot does not support DMs"),
             RoleId::new(get_id_from_env("ABB_ADMIN_ROLE")?),
         )
         .await?
-        || user.id == RoleId::new(get_id_from_env("ABB_USER_ID")?).get()
+        || msg.author.id == RoleId::new(get_id_from_env("ABB_USER_ID")?).get()
         || lucky)
 }
 
-pub fn in_bot_channel(msg: &Message) -> Result<bool, anyhow::Error> {
-    if msg.channel_id.get() == get_id_from_env("ABB_BOT")?
-        || msg.channel_id.get() == get_id_from_env("ABB_BOT_TEST_CHANNEL")?
+pub fn in_bot_channel(channel_id: u64) -> Result<bool, anyhow::Error> {
+    if channel_id == get_id_from_env("ABB_BOT")? ||
+        channel_id == get_id_from_env("ABB_BOT_TEST_CHANNEL")?
     {
         return Ok(true);
     }
@@ -37,13 +33,12 @@ pub fn in_bot_channel(msg: &Message) -> Result<bool, anyhow::Error> {
 
 pub async fn has_wuss_role(
     ctx: &Context,
-    user: &User,
-    guild: GuildId,
+    msg: &Message,
 ) -> Result<bool, anyhow::Error> {
-    Ok(user
+    Ok(msg.author
         .has_role(
             &ctx.http,
-            guild,
+            msg.guild_id.expect("BumbleBot does not support DMs"),
             RoleId::new(get_id_from_env("ABB_WUSS_ROLE")?),
         )
         .await?)

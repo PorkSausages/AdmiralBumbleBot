@@ -52,14 +52,16 @@ pub async fn check_pasta(
 pub async fn get_pasta(
     ctx: &Context,
     msg: &Message,
+    slug: Option<String>,
     pad: &Scratchpad,
-    args: &str,
 ) -> Result<(), anyhow::Error> {
-    let Some(pasta) = pad.with(|pad| {
-        pad.pastas
-            .iter()
-            .find(|(slug, _pasta)| slug.eq_ignore_ascii_case(args))
-            .map(|(_slug, pasta)| pasta.clone())
+    let Some(pasta) = slug.and_then(|s| {
+        pad.with(|pad| {
+            pad.pastas
+                .iter()
+                .find(|(pasta_slug, _pasta)| pasta_slug.eq_ignore_ascii_case(&s))
+                .map(|(_slug, pasta)| pasta.clone())
+        })
     }) else {
         msg.channel_id
             .say(
@@ -88,27 +90,23 @@ pub async fn get_pasta(
 pub async fn set_pasta(
     ctx: &Context,
     msg: &Message,
+    command: Option<String>,
     pad: &Scratchpad,
-    args: &str,
 ) -> Result<(), anyhow::Error> {
-    if !confirm_admin(
-        ctx,
-        &msg.author,
-        msg.guild_id.expect("BumbleBot does not support DMs"),
-    )
-    .await?
-    {
+    if !confirm_admin(ctx, msg).await? {
         return Ok(());
     }
 
     let (slug, pasta) = match {
         || -> Result<_, String> {
-            let parts = shlex::split(args).ok_or("Invalid quoting")?;
+            let parts = command
+                .and_then(|s| shlex::split(&s))
+                .ok_or("Invalid command")?;
             let mut parts = parts.iter();
 
             let slug = parts.next().ok_or("Missing slug")?.to_string();
             let mut triggers = Vec::new();
-            let mut chance = 100u32;
+            let mut chance: u32 = 100;
             let mut includes_mention = false;
             let mut payload = None;
 
@@ -182,20 +180,14 @@ pub async fn set_pasta(
 pub async fn del_pasta(
     ctx: &Context,
     msg: &Message,
+    slug: Option<String>,
     pad: &Scratchpad,
-    args: &str,
 ) -> Result<(), anyhow::Error> {
-    if !confirm_admin(
-        ctx,
-        &msg.author,
-        msg.guild_id.expect("BumbleBot does not support DMs"),
-    )
-    .await?
-    {
+    if !confirm_admin(ctx, msg).await? {
         return Ok(());
     }
 
-    if pad.with_mut(|pad| pad.pastas.remove(args))?.is_none() {
+    let Some(_) = slug.map_or(Ok(None), |s| pad.with_mut(|pad| pad.pastas.remove(&s)))? else {
         msg.channel_id
             .say(
                 &ctx.http,
@@ -222,6 +214,5 @@ pub async fn del_pasta(
             ),
         )
         .await?;
-
     Ok(())
 }
