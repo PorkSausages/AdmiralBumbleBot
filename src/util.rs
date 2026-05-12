@@ -14,9 +14,14 @@ pub fn random_string(strings: &[&str]) -> String {
         .to_string()
 }
 
-// pub fn contains_ping(val:&str) {
-//     val.
-// }
+pub fn is_grownup(id:u64) -> Result<bool, anyhow::Error> {
+    let grownups = [
+        get_id_from_env("ABB_PORKSAUSAGES_ID")?,
+        get_id_from_env("ABB_WRL_ID")?,
+        get_id_from_env("ABB_M4X_ID")?,
+    ];
+    Ok(grownups.contains(&id))
+}
 
 pub fn roll_dice(notation: &str) -> Result<u32, anyhow::Error> {
     let s = notation.to_lowercase();

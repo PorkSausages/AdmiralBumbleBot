@@ -1,7 +1,7 @@
 use crate::{
-    commands::common::{confirm_admin, send_clean_message},
+    commands::common::{send_clean_message},
     storage_models::{PastaModel, Scratchpad},
-    util::{get_id_from_env, random_string, roll_dice},
+    util::{get_id_from_env, is_grownup, random_string, roll_dice},
 };
 use serenity::{all::CreateAllowedMentions, model::channel::Message, prelude::Context};
 
@@ -88,7 +88,7 @@ pub async fn set_pasta(
     command: Option<String>,
     pad: &Scratchpad,
 ) -> Result<(), anyhow::Error> {
-    if !confirm_admin(ctx, msg).await? {
+    if !is_grownup(msg.author.id.get())? {
         return Ok(());
     }
 
@@ -167,7 +167,7 @@ pub async fn del_pasta(
     slug: Option<String>,
     pad: &Scratchpad,
 ) -> Result<(), anyhow::Error> {
-    if !confirm_admin(ctx, msg).await? {
+    if !is_grownup(msg.author.id.get())? {
         return Ok(());
     }
 

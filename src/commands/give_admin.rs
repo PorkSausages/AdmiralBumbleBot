@@ -3,7 +3,7 @@ use {
     crate::{
         logging, storage,
         storage_models::Scratchpad,
-        util::{get_id_from_env, roll_dice},
+        util::{get_id_from_env, is_grownup, roll_dice},
     },
     serenity::all::{Context, Message},
 };
@@ -19,12 +19,6 @@ pub async fn give_admin(
 
     let has_jenkem = storage::locate_jenkem(pad) == get_id_from_env("ABB_BOT_USER_ID")?;
     let dice_roll = roll_dice("2d20")?;
-    let grownups = [
-        get_id_from_env("ABB_PORKSAUSAGES_ID")?,
-        get_id_from_env("ABB_WRL_ID")?,
-        get_id_from_env("ABB_M4X_ID")?,
-    ];
-    let is_grownup = grownups.contains(&msg.author.id.get());
 
     if dice_roll >= 39 && !has_jenkem {
         msg.channel_id
@@ -42,7 +36,7 @@ pub async fn give_admin(
         return Ok(());
     }
 
-    if is_grownup || (dice_roll >= 39 && has_jenkem) {
+    if is_grownup(msg.author.id.get())? || (dice_roll >= 39 && has_jenkem) {
         msg.guild_id
             .expect("BumbleBot does not support DMs")
             .member(&ctx.http, msg.author.id)
