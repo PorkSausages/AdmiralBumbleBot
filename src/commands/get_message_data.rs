@@ -60,8 +60,7 @@ pub async fn get_message_data(
     }
 
     let victim = get_member_from_user_id(ctx, msg, victim, None)
-        .await?
-        .and_then(|m| Some(m.user))
+        .await?.map(|m| m.user)
         .unwrap_or(msg.author.clone());
 
     let username = &victim.name;

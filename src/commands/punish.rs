@@ -23,7 +23,7 @@ pub async fn punish(
     reason: Option<String>,
     punishment_type: &Punishment,
 ) -> Result<(), anyhow::Error> {
-    if !common::confirm_admin(ctx, &msg).await? {
+    if !common::confirm_admin(ctx, msg).await? {
         return Ok(());
     }
 

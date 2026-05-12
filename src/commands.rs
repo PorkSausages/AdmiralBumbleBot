@@ -127,20 +127,11 @@ fn parse_command(
         if re.is_match(text) {
             let caps = re.captures(text).expect("Checked for match");
 
-            let command = match caps.name("command") {
-                Some(command) => Some(String::from(command.as_str())),
-                None => None,
-            };
+            let command = caps.name("command").map(|command| String::from(command.as_str()));
 
-            let target = match caps.name("target") {
-                Some(target) => Some(String::from(target.as_str())),
-                None => None,
-            };
+            let target = caps.name("target").map(|target| String::from(target.as_str()));
 
-            let args = match caps.name("args") {
-                Some(args) => Some(String::from(args.as_str())),
-                None => None,
-            };
+            let args = caps.name("args").map(|args| String::from(args.as_str()));
 
             return Ok((command, target, args));
         }
